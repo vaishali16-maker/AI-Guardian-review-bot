@@ -15,6 +15,8 @@ The moment a developer opens or updates a Pull Request, Guardian Review AI:
 3. Fetches the code diff via GitHub's REST API
 4. Sends the diff to an LLM (Groq) with a security-focused review prompt
 5. Posts the AI's findings back as a comment on the PR — automatically, with no human needing to trigger it
+6. - Generates unit tests for the changed code, giving contributors a starting point 
+  for test coverage
 
 It specifically checks for:
 - Hardcoded secrets (API keys, passwords, tokens)
@@ -29,6 +31,12 @@ It specifically checks for:
 Most AI PR bots already handle generic style and bug checking. Very few focus specifically on **security**, and even fewer explain findings in language a beginner can actually act on instead of jargon-heavy alerts. This makes the bot useful for solo developers and small teams without a dedicated security reviewer.
 
 ---
+
+### Unit Test Generation
+Alongside the security review, Guardian Review AI generates unit tests for the 
+changed code in each PR — giving contributors test coverage to start from even if 
+they didn't write tests themselves. Useful for solo devs and small teams under 
+time pressure.
 
 ## Architecture
 
@@ -78,6 +86,12 @@ Post review as PR comment (GitHub REST API)
 - **At larger scale** (thousands of repos), the next step would be replacing the in-memory queue with a persistent task queue (e.g. Celery + Redis) so work survives restarts and can be distributed across multiple workers.
 
 ---
+### Notes on reliability
+During testing, a transient Groq API key issue caused reviews to silently fail 
+(the response lacked the expected structure). This was resolved by improving error 
+logging to surface the full API response rather than just the missing key — a good 
+reminder that error messages should always show what actually happened, not just 
+what didn't.
 
 ## Repository safety net (demonstrated on this repo)
 
