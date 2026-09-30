@@ -61,3 +61,29 @@ def test_retry_on_rate_limit(mock_sleep, mock_get, mock_token):
     result = fetch_pr_diff("owner", "repo", 1)
     assert mock_get.call_count == 2
     assert result[0]["filename"] == "test.py"
+
+#Test 5: signature verification accepts a correct signature
+def test_verify_signature_accepts_valid():
+    import hmac, hashlib
+    import main
+    body = b'{"action": "opened"}'
+    secret = "testsecret"
+    sig = "sha256=" + hmac.new(secret.encode(), body, hashlib.sha256).hexdigest()
+    with patch("main.WEBHOOK_SECRET", secret):
+        assert main.verify_signature(body, sig) is True
+
+
+#Test 6: signature verification rejects a wrong signature
+def test_verify_signature_rejects_invalid():
+    import main
+    body = b'{"action": "opened"}'
+    with patch("main.WEBHOOK_SECRET", "testsecret"):
+        assert main.verify_signature(body, "sha256=wrongsignature") is False
+
+
+#Test 7: signature verification rejects a missing signature
+def test_verify_signature_rejects_missing():
+    import main
+    body = b'{"action": "opened"}'
+    with patch("main.WEBHOOK_SECRET", "testsecret"):
+        assert main.verify_signature(body, None) is False
