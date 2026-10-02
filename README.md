@@ -12,7 +12,7 @@ The moment a developer opens or updates a Pull Request, Guardian Review AI:
 
 1. Detects the event instantly via a GitHub webhook
 2. Verifies the webhook signature to confirm the request really came from GitHub
-3. Authenticates as a GitHub App (JWT → installation token)
+3. Authenticates as a GitHub App (JWT → installation token), using the installation ID that GitHub sends in each webhook
 4. Fetches the code diff via GitHub's REST API
 5. Sends the diff (capped at a safe size) to an LLM (Groq) with a security-focused review prompt
 6. Posts the AI's findings back as a comment on the PR, automatically, with no human needing to trigger it
@@ -54,7 +54,7 @@ Verify HMAC signature (X-Hub-Signature-256)  ──►  reject with 401 if inval
 Async Queue  ──►  Background worker (processes one PR at a time)
         │
         ▼
-GitHub App Auth (JWT → Installation Token)
+GitHub App Auth (JWT → Installation Token, using the installation ID from the webhook)
         │
         ▼
 Fetch PR diff (GitHub REST API)  ──►  truncate if over size limit
@@ -88,6 +88,7 @@ Post review as PR comment (GitHub REST API)
 - **Webhook signature verification:** every incoming request is checked against GitHub's `X-Hub-Signature-256` header using a shared secret (`WEBHOOK_SECRET`). The raw request body is verified *before* any JSON parsing, and the comparison uses `hmac.compare_digest` to prevent timing attacks. Requests with a missing or invalid signature are rejected with `401`, so nobody can trigger reviews (and burn API quota) by sending fake events to the public URL.
 - **No secrets in code:** all credentials (GitHub App key, Groq key, webhook secret) are read from environment variables.
 - **Diff size limit:** the diff sent to the model is capped at 30,000 characters. If a PR exceeds this, the review covers the first part and the bot adds a visible warning to the comment, so a partial review is never presented as a complete one.
+- **Multi-account ready:** the installation ID is read from each verified webhook payload instead of a fixed environment variable, so the code is designed to serve any account that installs the app. The app is kept private for now to protect the API budget.
 
 ---
 
@@ -95,7 +96,7 @@ Post review as PR comment (GitHub REST API)
 
 - **Concurrency:** incoming webhook events are placed on an async queue and processed one at a time by a background worker, so overlapping PR events never race against each other or the GitHub/Groq APIs simultaneously.
 - **Rate limiting:** API calls check GitHub's remaining rate-limit headers and log a warning when running low; both GitHub and Groq calls retry automatically with exponential backoff on `429` responses.
-- **Testing:** core logic (webhook filtering, signature verification, diff parsing, AI response parsing, retry behavior) is covered by unit tests using mocked API responses, so no real network calls are needed to verify correctness.
+- **Testing:** core logic (webhook filtering, signature verification, diff parsing, AI response parsing, retry behavior, installation ID handling) is covered by unit tests using mocked API responses, so no real network calls are needed to verify correctness.
 - **At larger scale** (thousands of repos), the next step would be replacing the in-memory queue with a persistent task queue (e.g. Celery + Redis) so work survives restarts and can be distributed across multiple workers.
 
 ---
@@ -132,8 +133,7 @@ Create a `.env` file with:
 
 ```
 APP_ID=your_github_app_id
-INSTALLATION_ID=your_installation_id
-PRIVATE_KEY_PATH=path/to/your/private-key.pem
+PRIVATE_KEY=your_private_key_contents
 GROQ_API_KEY=your_groq_api_key
 WEBHOOK_SECRET=your_webhook_secret
 ```
@@ -188,8 +188,9 @@ pytest test_main.py -v
 ## Possible future improvements
 
 - Replace the in-memory queue with a persistent queue (Celery + Redis)
-- Read the installation ID from each webhook payload so the bot can be installed by multiple accounts
+- Add per-installation rate limits before making the app public
 - Add prompt-injection mitigations for untrusted diff content
+- Validate the token response from GitHub (status code and JSON key) with clearer error messages
 - Combine with a static analysis tool (e.g. Semgrep) and have the LLM explain its findings
 
 ---
