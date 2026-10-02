@@ -22,8 +22,8 @@ def make_request_with_retry(method, url, headers, json_body=None, max_retries=3)
     return response
 
 # Fetch the diff of a pull request
-def fetch_pr_diff(owner, repo, pr_number):
-    token = get_installation_token()
+def fetch_pr_diff(owner, repo, pr_number, installation_id):
+    token = get_installation_token(installation_id)
     headers = {
         'Authorization': f'Bearer {token}',
         'Accept': 'application/vnd.github+json'
@@ -38,8 +38,8 @@ def fetch_pr_diff(owner, repo, pr_number):
     return files
 
 # Post a comment on a pull request
-def post_pr_comment(owner, repo, pr_number, comment_text):
-    token = get_installation_token()
+def post_pr_comment(owner, repo, pr_number, comment_text, installation_id):
+    token = get_installation_token(installation_id)
     headers = {
         'Authorization': f'Bearer {token}',
         'Accept': 'application/vnd.github+json'
