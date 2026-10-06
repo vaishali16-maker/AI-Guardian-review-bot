@@ -16,7 +16,6 @@ The moment a developer opens or updates a Pull Request, Guardian Review AI:
 4. Fetches the code diff via GitHub's REST API
 5. Sends the diff (capped at a safe size) to an LLM (Groq) with a security-focused review prompt
 6. Posts the AI's findings back as a comment on the PR, automatically, with no human needing to trigger it
-7. Generates unit tests for the changed code, giving contributors a starting point for test coverage
 
 It specifically checks for:
 
@@ -32,10 +31,6 @@ It specifically checks for:
 Most AI PR bots already handle generic style and bug checking. Very few focus specifically on **security**, and even fewer explain findings in language a beginner can actually act on instead of jargon-heavy alerts. This makes the bot useful for solo developers and small teams without a dedicated security reviewer.
 
 ---
-
-### Unit Test Generation
-
-Alongside the security review, Guardian Review AI generates unit tests for the changed code in each PR, giving contributors test coverage to start from even if they didn't write tests themselves. Useful for solo devs and small teams under time pressure.
 
 ---
 
@@ -87,7 +82,7 @@ Post review as PR comment (GitHub REST API)
 
 - **Webhook signature verification:** every incoming request is checked against GitHub's `X-Hub-Signature-256` header using a shared secret (`WEBHOOK_SECRET`). The raw request body is verified *before* any JSON parsing, and the comparison uses `hmac.compare_digest` to prevent timing attacks. Requests with a missing or invalid signature are rejected with `401`, so nobody can trigger reviews (and burn API quota) by sending fake events to the public URL.
 - **No secrets in code:** all credentials (GitHub App key, Groq key, webhook secret) are read from environment variables.
-- **Diff size limit:** the diff sent to the model is capped at 30,000 characters. If a PR exceeds this, the review covers the first part and the bot adds a visible warning to the comment, so a partial review is never presented as a complete one.
+- **Diff size limit:** the diff sent to the model is capped at 30,000 characters. Lockfiles, generated files, and files without patches are skipped; per-file and overall truncation or skipped files are listed in the PR comment.
 - **Multi-account ready:** the installation ID is read from each verified webhook payload instead of a fixed environment variable, so the code is designed to serve any account that installs the app. The app is kept private for now to protect the API budget.
 
 ---
@@ -95,7 +90,7 @@ Post review as PR comment (GitHub REST API)
 ## Reliability & scale considerations
 
 - **Concurrency:** incoming webhook events are placed on an async queue and processed one at a time by a background worker, so overlapping PR events never race against each other or the GitHub/Groq APIs simultaneously.
-- **Rate limiting:** API calls check GitHub's remaining rate-limit headers and log a warning when running low; both GitHub and Groq calls retry automatically with exponential backoff on `429` responses.
+- **Rate limiting:** GitHub calls retry `429`, `502`, `503`, and `504` responses; Groq retries `429` responses. Both use exponential backoff and honor `Retry-After` when present.
 - **Testing:** core logic (webhook filtering, signature verification, diff parsing, AI response parsing, retry behavior, installation ID handling) is covered by unit tests using mocked API responses, so no real network calls are needed to verify correctness.
 - **At larger scale** (thousands of repos), the next step would be replacing the in-memory queue with a persistent task queue (e.g. Celery + Redis) so work survives restarts and can be distributed across multiple workers.
 
@@ -103,7 +98,7 @@ Post review as PR comment (GitHub REST API)
 
 ### Notes on reliability
 
-During testing, a transient Groq API key issue caused reviews to silently fail (the response lacked the expected structure). This was resolved by improving error logging to surface the full API response rather than just the missing key. It was a good reminder that error messages should always show what actually happened, not just what didn't.
+If a review request or response fails, the bot logs the exception type and posts a short failure comment on the PR.
 
 ---
 
