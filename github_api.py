@@ -16,13 +16,13 @@ def _retry_delay(response, attempt):
     value = response.headers.get("Retry-After")
     if value:
         try:
-            return max(0, float(value))
+            return min(30, max(0, float(value)))
         except ValueError:
             try:
                 retry_time = parsedate_to_datetime(value)
                 if retry_time.tzinfo is None:
                     retry_time = retry_time.replace(tzinfo=timezone.utc)
-                return max(0, (retry_time - datetime.now(timezone.utc)).total_seconds())
+                return min(30, max(0, (retry_time - datetime.now(timezone.utc)).total_seconds()))
             except (TypeError, ValueError, OverflowError):
                 pass
     return 2 ** attempt
@@ -78,7 +78,14 @@ def find_bot_comment(owner, repo, pr_number, installation_id):
         comments = make_request_with_retry("GET", f"{base_url}?per_page=100&page={page}", headers).json()
         if not isinstance(comments, list):
             raise ValueError("GitHub comments response must be a list")
-        match = next((item for item in comments if COMMENT_MARKER in item.get("body", "")), None)
+        match = next((
+            item for item in comments
+            if COMMENT_MARKER in item.get("body", "")
+            and (
+                (item.get("user") or {}).get("type") == "Bot"
+                or (item.get("user") or {}).get("login", "").endswith("[bot]")
+            )
+        ), None)
         if match:
             return match
         if len(comments) < 100:

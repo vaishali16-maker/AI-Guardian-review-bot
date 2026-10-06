@@ -40,13 +40,13 @@ def get_installation_token(installation_id):
             if attempt < 2:
                 retry_after = response.headers.get("Retry-After")
                 try:
-                    delay = float(retry_after) if retry_after else 2 ** attempt
+                    delay = min(30, float(retry_after)) if retry_after else 2 ** attempt
                 except ValueError:
                     try:
                         retry_time = parsedate_to_datetime(retry_after)
                         if retry_time.tzinfo is None:
                             retry_time = retry_time.replace(tzinfo=timezone.utc)
-                        delay = max(0, (retry_time - datetime.now(timezone.utc)).total_seconds())
+                        delay = min(30, max(0, (retry_time - datetime.now(timezone.utc)).total_seconds()))
                     except (TypeError, ValueError, OverflowError):
                         delay = 2 ** attempt
                 time.sleep(max(0, delay))
