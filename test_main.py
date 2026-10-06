@@ -1,4 +1,5 @@
 import pytest
+import re
 from unittest.mock import patch, MagicMock
 from unittest.mock import AsyncMock
 try:
@@ -261,6 +262,7 @@ def _valid_finding(**changes):
         "title": "SQL injection",
         "explanation": "Input reaches the query unsafely.",
         "fix": "Use a parameterized query.",
+        "fix_code": None,
         "confidence": "high",
     }
     finding.update(changes)
@@ -320,7 +322,7 @@ def test_ai_review_flags_injection_phrase(mock_post):
 def test_render_escapes_content_and_orders_by_severity():
     from render import render_review
     rendered = render_review([
-        _valid_finding(severity="low", title="<img src=x onerror=alert(1)>", explanation="[link](https://bad.test)", fix="const x = `<script>`;"),
+        _valid_finding(severity="low", title="<img src=x onerror=alert(1)>", explanation="[link](https://bad.test)", fix="Use a safe value.", fix_code="const x = `<script>`;"),
         _valid_finding(severity="critical", title="Critical issue"),
     ])
     assert rendered.startswith("<!-- guardian-review-bot -->")
@@ -374,20 +376,68 @@ def test_markdown_text_preserves_quotes_and_does_not_escape_hash():
 
 
 def test_render_keeps_raw_angle_brackets_inside_code_fence():
-    from render import _fix_markdown
-    rendered = _fix_markdown("const value = <tag>;")
-    assert rendered.startswith("```\n") and rendered.endswith("\n```")
-    assert "const value = <tag>;" in rendered
+    from render import render_review
+    code = "const value = <tag>;"
+    rendered = render_review([_valid_finding(fix_code=code)])
+    assert "\n```\n" in rendered
+    assert code in rendered
     assert "&lt;" not in rendered and "&gt;" not in rendered
 
 
 def test_render_triple_backticks_cannot_close_dynamic_fence():
-    from render import _fix_markdown
+    from render import render_review
     content = "const value = ` ``` <tag> `;"
-    rendered = _fix_markdown(content)
-    opening_fence = rendered.splitlines()[0]
+    rendered = render_review([_valid_finding(fix_code=content)])
+    opening_fence = next(line for line in rendered.splitlines() if line.startswith("`"))
     assert len(opening_fence) > 3
-    assert rendered == f"{opening_fence}\n{content}\n{opening_fence}"
+    fence_lines = [line for line in rendered.splitlines() if re.fullmatch(r"`{3,}", line)]
+    assert fence_lines == [opening_fence, opening_fence]
+    assert content in rendered
+
+
+def test_render_all_fences_start_at_column_zero_and_are_balanced():
+    from render import render_review
+    rendered = render_review([
+        _valid_finding(fix_code="first = 1"),
+        _valid_finding(file="other.py", severity="medium", fix_code="second = `value`"),
+        _valid_finding(file="third.py", severity="low", fix_code=None),
+    ])
+    fence_lines = [line for line in rendered.splitlines() if "```" in line]
+    assert all(line == line.lstrip() and re.fullmatch(r"`{3,}", line) for line in fence_lines)
+    assert len(fence_lines) % 2 == 0
+
+
+def test_render_second_finding_heading_is_outside_first_code_block():
+    from render import render_review
+    rendered = render_review([
+        _valid_finding(fix_code="safe = True"),
+        _valid_finding(file="second.py", title="Second finding", fix_code=None),
+    ])
+    in_code_block = False
+    second_heading_outside = False
+    for line in rendered.splitlines():
+        if re.fullmatch(r"`{3,}", line):
+            in_code_block = not in_code_block
+        if "Second finding" in line:
+            second_heading_outside = not in_code_block
+    assert second_heading_outside
+    assert not in_code_block
+
+
+def test_render_fix_prose_without_fix_code_has_no_fence():
+    from render import render_review
+    rendered = render_review([_valid_finding(fix="Replace string concatenation with bound parameters.")])
+    assert "```" not in rendered
+    assert "**Fix:** Replace string concatenation with bound parameters\\." in rendered
+
+
+def test_review_ai_validates_optional_fix_code_type_and_length():
+    from review_ai import _validate_findings
+    finding = _valid_finding()
+    assert _validate_findings({"findings": [finding]})[0]["fix_code"] is None
+    assert _validate_findings({"findings": [{**finding, "fix_code": "x = 1"}]})[0]["fix_code"] == "x = 1"
+    assert _validate_findings({"findings": [{**finding, "fix_code": 7}]}) == []
+    assert _validate_findings({"findings": [{**finding, "fix_code": "x" * 2001}]}) == []
 
 
 def test_render_defangs_mentions_and_autolinks():
