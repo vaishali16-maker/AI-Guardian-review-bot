@@ -1,0 +1,393 @@
+[
+  {
+    "id": "sqli_01",
+    "code": "import sqlite3\n\ndef load_account(name):\n    db = sqlite3.connect('app.db')\n    sql = \"SELECT * FROM accounts WHERE name = \" + name\n    return db.execute(sql).fetchall()\n",
+    "vulnerable": true,
+    "category": "sql_injection",
+    "acceptable_cwes": [
+      "CWE-89"
+    ],
+    "notes": "String concatenation into SQL query."
+  },
+  {
+    "id": "sqli_02",
+    "code": "import sqlite3\n\ndef find_order(order_id):\n    db = sqlite3.connect('orders.db')\n    query = f\"SELECT * FROM orders WHERE id = {order_id}\"\n    return db.execute(query).fetchone()\n",
+    "vulnerable": true,
+    "category": "sql_injection",
+    "acceptable_cwes": [
+      "CWE-89"
+    ],
+    "notes": "An f-string inserts untrusted input into SQL."
+  },
+  {
+    "id": "sqli_03",
+    "code": "def search_products(cursor, term):\n    pattern = '%' + term + '%'\n    sql = \"SELECT sku, title FROM products WHERE title LIKE '%s'\" % pattern\n    cursor.execute(sql)\n    return cursor.fetchall()\n\n",
+    "vulnerable": true,
+    "category": "sql_injection",
+    "acceptable_cwes": [
+      "CWE-89"
+    ],
+    "notes": "Percent formatting builds a query from request data."
+  },
+  {
+    "id": "secret_01",
+    "code": "PAYMENT_API_KEY = \"sk_test_fictional_000000\"\n\ndef create_charge(client, amount):\n    client.api_key = PAYMENT_API_KEY\n    return client.charge(amount)\n",
+    "vulnerable": true,
+    "category": "hardcoded_secret",
+    "acceptable_cwes": [
+      "CWE-798",
+      "CWE-259"
+    ],
+    "notes": "A credential-like API key is embedded in source."
+  },
+  {
+    "id": "secret_02",
+    "code": "SERVICE_PASSWORD = 'fictional-demo-password'\n\ndef connect_to_archive():\n    connection = ArchiveConnection(\n        host='archive.internal',\n        username='worker',\n        password=SERVICE_PASSWORD,\n    )\n    return connection.open()\n",
+    "vulnerable": true,
+    "category": "hardcoded_secret",
+    "acceptable_cwes": [
+      "CWE-798",
+      "CWE-259"
+    ],
+    "notes": "A fixed password is committed in application code."
+  },
+  {
+    "id": "exec_01",
+    "code": "def calculate_expression(source):\n    result = eval(source)\n    return result\n\nif __name__ == '__main__':\n    print(calculate_expression(input('expression: ')))\n",
+    "vulnerable": true,
+    "category": "code_execution",
+    "acceptable_cwes": [
+      "CWE-95",
+      "CWE-94"
+    ],
+    "notes": "Untrusted expression is evaluated as Python code."
+  },
+  {
+    "id": "exec_02",
+    "code": "def run_plugin(plugin_text, context):\n    namespace = {'context': context}\n    exec(plugin_text, namespace)\n    return namespace.get('result')\n\ndef handle_plugin_request(request):\n    return run_plugin(request.form['plugin'], request.user)\n",
+    "vulnerable": true,
+    "category": "code_execution",
+    "acceptable_cwes": [
+      "CWE-94",
+      "CWE-95"
+    ],
+    "notes": "Request-controlled text reaches exec."
+  },
+  {
+    "id": "cmd_01",
+    "code": "import subprocess\n\ndef show_report(report_name):\n    command = 'cat /srv/reports/' + report_name\n    result = subprocess.run(command, shell=True, capture_output=True, text=True)\n    return result.stdout\n",
+    "vulnerable": true,
+    "category": "command_injection",
+    "acceptable_cwes": [
+      "CWE-78",
+      "CWE-77"
+    ],
+    "notes": "User-controlled text is concatenated into a shell command."
+  },
+  {
+    "id": "cmd_02",
+    "code": "import os\n\ndef compress_folder(folder):\n    command = f\"tar -czf /tmp/archive.tgz {folder}\"\n    os.system(command)\n    return '/tmp/archive.tgz'\n\n",
+    "vulnerable": true,
+    "category": "command_injection",
+    "acceptable_cwes": [
+      "CWE-78",
+      "CWE-77"
+    ],
+    "notes": "A shell command interpolates a caller-controlled folder."
+  },
+  {
+    "id": "path_01",
+    "code": "from pathlib import Path\n\ndef read_note(name):\n    path = Path('/srv/notes') / name\n    return path.read_text(encoding='utf-8')\n\ndef note_route(request):\n    return read_note(request.args['name'])\n",
+    "vulnerable": true,
+    "category": "path_traversal",
+    "acceptable_cwes": [
+      "CWE-22",
+      "CWE-23",
+      "CWE-73"
+    ],
+    "notes": "Unvalidated path component can escape the notes directory."
+  },
+  {
+    "id": "path_02",
+    "code": "import os\n\ndef export_file(filename):\n    target = os.path.join('/var/app/exports', filename)\n    with open(target, encoding='utf-8') as handle:\n        return handle.read()\n\n",
+    "vulnerable": true,
+    "category": "path_traversal",
+    "acceptable_cwes": [
+      "CWE-22",
+      "CWE-23",
+      "CWE-73"
+    ],
+    "notes": "Joining with a base does not prevent ../ traversal."
+  },
+  {
+    "id": "deserialize_01",
+    "code": "import pickle\n\ndef load_profile(uploaded_file):\n    data = uploaded_file.read()\n    profile = pickle.loads(data)\n    return {\"name\": profile.name, \"theme\": profile.theme}\n\ndef profile_route(request):\n    return load_profile(request.files['profile'])\n",
+    "vulnerable": true,
+    "category": "insecure_deserialization",
+    "acceptable_cwes": [
+      "CWE-502"
+    ],
+    "notes": "Attacker-controlled upload is deserialized with pickle."
+  },
+  {
+    "id": "deserialize_02",
+    "code": "import yaml\n\ndef read_preferences(stream):\n    options = yaml.load(stream, Loader=yaml.Loader)\n    return options.get('display', {})\n\ndef preferences_endpoint(request):\n    return read_preferences(request.files['settings'])\n",
+    "vulnerable": true,
+    "category": "insecure_deserialization",
+    "acceptable_cwes": [
+      "CWE-502"
+    ],
+    "notes": "Untrusted YAML is loaded with an unsafe object-capable loader."
+  },
+  {
+    "id": "crypto_01",
+    "code": "import hashlib\n\ndef password_digest(password):\n    encoded = password.encode('utf-8')\n    return hashlib.md5(encoded).hexdigest()\n\ndef verify_password(password, stored):\n    return password_digest(password) == stored\n",
+    "vulnerable": true,
+    "category": "weak_crypto",
+    "acceptable_cwes": [
+      "CWE-327",
+      "CWE-328",
+      "CWE-916"
+    ],
+    "notes": "MD5 is used as a password hashing function without a password KDF."
+  },
+  {
+    "id": "crypto_02",
+    "code": "import hashlib\n\ndef save_member(password):\n    digest = hashlib.sha1(password.encode()).hexdigest()\n    database.insert_member(password_digest=digest)\n\ndef check_member(password, saved):\n    return hashlib.sha1(password.encode()).hexdigest() == saved\n",
+    "vulnerable": true,
+    "category": "weak_crypto",
+    "acceptable_cwes": [
+      "CWE-327",
+      "CWE-328",
+      "CWE-916"
+    ],
+    "notes": "SHA-1 is used directly to store password verifiers."
+  },
+  {
+    "id": "tls_01",
+    "code": "import requests\n\ndef fetch_catalog(url):\n    response = requests.get(url, verify=False, timeout=10)\n    response.raise_for_status()\n    return response.json()\n\n",
+    "vulnerable": true,
+    "category": "tls_verification_disabled",
+    "acceptable_cwes": [
+      "CWE-295"
+    ],
+    "notes": "TLS certificate verification is explicitly disabled."
+  },
+  {
+    "id": "debug_01",
+    "code": "from flask import Flask\n\napp = Flask(__name__)\n\n@app.get('/status')\ndef status():\n    return {'state': 'ready'}\n\nif __name__ == '__main__':\n    app.run(host='0.0.0.0', debug=True)\n",
+    "vulnerable": true,
+    "category": "debug_mode_enabled",
+    "acceptable_cwes": [
+      "CWE-489",
+      "CWE-215"
+    ],
+    "notes": "Debug server mode is enabled while binding on all interfaces."
+  },
+  {
+    "id": "random_01",
+    "code": "import random\n\ndef issue_reset_code():\n    alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'\n    return ''.join(random.choice(alphabet) for _ in range(24))\n\ndef reset_link(user):\n    return save_reset_code(user.id, issue_reset_code())\n",
+    "vulnerable": true,
+    "category": "insecure_randomness",
+    "acceptable_cwes": [
+      "CWE-330",
+      "CWE-338"
+    ],
+    "notes": "Non-cryptographic random is used to create a password reset token."
+  },
+  {
+    "id": "random_02",
+    "code": "import random\n\ndef new_session_token():\n    pieces = [str(random.getrandbits(32)) for _ in range(4)]\n    token = '-'.join(pieces)\n    sessions.store(token)\n    return token\n\ndef login(user):\n    return new_session_token()\n",
+    "vulnerable": true,
+    "category": "insecure_randomness",
+    "acceptable_cwes": [
+      "CWE-330",
+      "CWE-338"
+    ],
+    "notes": "Predictable PRNG output is used as an authentication token."
+  },
+  {
+    "id": "xss_01",
+    "code": "from flask import Response\n\ndef greeting(request):\n    name = request.args.get('name', 'visitor')\n    return Response('<h1>Hello ' + name + '</h1>', mimetype='text/html')\n",
+    "vulnerable": true,
+    "category": "xss",
+    "acceptable_cwes": [
+      "CWE-79",
+      "CWE-80"
+    ],
+    "notes": "Untrusted input is inserted into HTML without escaping."
+  },
+  {
+    "id": "xss_02",
+    "code": "def render_comment(comment):\n    html = \"<section class='comment'>\"\n    html += '<p>' + comment.body + '</p>'\n    html += '</section>'\n    return html\n\ndef comments_page(comments):\n    return ''.join(render_comment(item) for item in comments)\n",
+    "vulnerable": true,
+    "category": "xss",
+    "acceptable_cwes": [
+      "CWE-79",
+      "CWE-80"
+    ],
+    "notes": "Stored comment content is emitted as raw HTML."
+  },
+  {
+    "id": "ssrf_01",
+    "code": "import requests\n\ndef preview_url(request):\n    target = request.args['url']\n    response = requests.get(target, timeout=5)\n    response.raise_for_status()\n    return response.text[:2000]\n\n",
+    "vulnerable": true,
+    "category": "ssrf",
+    "acceptable_cwes": [
+      "CWE-918"
+    ],
+    "notes": "A user-supplied URL is fetched by the server without destination checks."
+  },
+  {
+    "id": "ssrf_02",
+    "code": "import requests\n\ndef download_avatar(profile):\n    avatar_url = profile.get('avatar_url')\n    image = requests.get(avatar_url, timeout=8).content\n    with open('/tmp/avatar.png', 'wb') as output:\n        output.write(image)\n    return '/tmp/avatar.png'\n",
+    "vulnerable": true,
+    "category": "ssrf",
+    "acceptable_cwes": [
+      "CWE-918"
+    ],
+    "notes": "A profile-controlled URL is requested from the server."
+  },
+  {
+    "id": "secret_03",
+    "code": "class Mailer:\n    SMTP_PASSWORD = 'demo-mail-password'\n\n    def send(self, recipient, message):\n        client = SMTPClient('mail.internal')\n        client.login('notifier', self.SMTP_PASSWORD)\n        return client.send(recipient, message)\n",
+    "vulnerable": true,
+    "category": "hardcoded_secret",
+    "acceptable_cwes": [
+      "CWE-798",
+      "CWE-259"
+    ],
+    "notes": "A static SMTP password is embedded in a class constant."
+  },
+  {
+    "id": "xss_03",
+    "code": "def profile_card(profile):\n    name = profile['display_name']\n    bio = profile['bio']\n    return f\"<article><b>{name}</b><p>{bio}</p></article>\"\n\ndef profile_response(profile):\n    return Response(profile_card(profile), mimetype='text/html')\n",
+    "vulnerable": true,
+    "category": "xss",
+    "acceptable_cwes": [
+      "CWE-79",
+      "CWE-80"
+    ],
+    "notes": "Profile fields are interpolated into an HTML response unescaped."
+  },
+  {
+    "id": "safe_sqli_01",
+    "code": "import sqlite3\n\ndef load_account(name):\n    db = sqlite3.connect('app.db')\n    return db.execute(\n        'SELECT * FROM accounts WHERE name = ?', (name,)\n    ).fetchall()\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Query uses a bound parameter."
+  },
+  {
+    "id": "safe_sqli_02",
+    "code": "def find_order(cursor, order_id):\n    sql = 'SELECT * FROM orders WHERE id = %s'\n    cursor.execute(sql, (order_id,))\n    row = cursor.fetchone()\n    return row\n\ndef route(request, cursor):\n    return find_order(cursor, request.args['id'])\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Driver parameterization keeps data separate from SQL syntax."
+  },
+  {
+    "id": "safe_secret_01",
+    "code": "import os\n\ndef mail_settings():\n    password = os.getenv('MAIL_PASSWORD')\n    if not password:\n        raise RuntimeError('MAIL_PASSWORD is required')\n    return {'host': 'mail.internal', 'password': password}\n\ndef send_mail(message):\n    return Mailer(**mail_settings()).send(message)\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Credential is read from environment configuration, not embedded."
+  },
+  {
+    "id": "safe_exec_01",
+    "code": "import ast\n\ndef parse_numeric_list(source):\n    if len(source) > 1000:\n        raise ValueError('too long')\n    value = ast.literal_eval(source)\n    if not isinstance(value, list):\n        raise ValueError('expected a list')\n    if not all(isinstance(item, (int, float)) for item in value):\n        raise ValueError('expected numbers')\n    return value\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Literal data is parsed without evaluating arbitrary Python code."
+  },
+  {
+    "id": "safe_cmd_01",
+    "code": "import subprocess\n\ndef show_report(report_name):\n    if report_name not in {'daily', 'weekly'}:\n        raise ValueError('unknown report')\n    result = subprocess.run(\n        ['cat', '/srv/reports/' + report_name],\n        capture_output=True, text=True, check=True\n    )\n    return result.stdout\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Allowlisted name and argument list are used without a shell."
+  },
+  {
+    "id": "safe_token_01",
+    "code": "import secrets\n\ndef issue_reset_code():\n    alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'\n    return ''.join(secrets.choice(alphabet) for _ in range(24))\n\ndef reset_link(user):\n    code = issue_reset_code()\n    save_reset_code(user.id, code)\n    return build_reset_url(code)\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Cryptographically secure randomness generates reset token."
+  },
+  {
+    "id": "safe_crypto_01",
+    "code": "import hashlib\nimport os\n\ndef password_digest(password):\n    salt = os.urandom(16)\n    digest = hashlib.scrypt(password.encode(), salt=salt, n=2**14, r=8, p=1)\n    return salt.hex(), digest.hex()\n\ndef save_password(user, password):\n    user.password_hash = password_digest(password)\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Uses a salted, purpose-built password hashing KDF."
+  },
+  {
+    "id": "safe_xss_01",
+    "code": "import html\n\ndef greeting(request):\n    name = request.args.get('name', 'visitor')\n    escaped_name = html.escape(name, quote=True)\n    return f'<h1>Hello {escaped_name}</h1>'\n\ndef response_for(request):\n    return Response(greeting(request), mimetype='text/html')\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Untrusted text is HTML-escaped before insertion."
+  },
+  {
+    "id": "safe_path_01",
+    "code": "from pathlib import Path\n\nBASE = Path('/srv/notes').resolve()\n\ndef read_note(name):\n    candidate = (BASE / name).resolve()\n    if candidate != BASE and BASE not in candidate.parents:\n        raise ValueError('invalid note path')\n    return candidate.read_text(encoding='utf-8')\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Canonical path is checked to remain within the base directory."
+  },
+  {
+    "id": "safe_yaml_01",
+    "code": "import yaml\n\ndef read_preferences(stream):\n    options = yaml.safe_load(stream) or {}\n    if not isinstance(options, dict):\n        raise ValueError('preferences must be a mapping')\n    return options.get('display', {})\n\ndef update_preferences(user, stream):\n    user.display = read_preferences(stream)\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Uses safe_load and validates the resulting data shape."
+  },
+  {
+    "id": "safe_tls_01",
+    "code": "import requests\n\ndef fetch_catalog(url):\n    response = requests.get(url, timeout=10)\n    response.raise_for_status()\n    return response.json()\n\ndef refresh_catalog():\n    return fetch_catalog('https://catalog.example.test/api')\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "TLS certificate verification remains enabled by default."
+  },
+  {
+    "id": "safe_debug_01",
+    "code": "from flask import Flask\n\napp = Flask(__name__)\n\n@app.get('/status')\ndef status():\n    return {'state': 'ready'}\n\nif __name__ == '__main__':\n    app.run(host='127.0.0.1', port=8000, debug=False)\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Debug mode is explicitly disabled and server binds locally."
+  },
+  {
+    "id": "safe_random_01",
+    "code": "import secrets\n\ndef new_session_token():\n    token = secrets.token_urlsafe(32)\n    sessions.store(token)\n    return token\n\ndef login(user):\n    return create_session(user, new_session_token())\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Uses secrets.token_urlsafe for authentication token generation."
+  },
+  {
+    "id": "safe_ssrf_01",
+    "code": "from urllib.parse import urlparse\nimport requests\n\nALLOWED_HOST = 'images.example.test'\n\ndef fetch_avatar(url):\n    parsed = urlparse(url)\n    if parsed.scheme != 'https' or parsed.hostname != ALLOWED_HOST:\n        raise ValueError('unsupported avatar URL')\n    response = requests.get(url, timeout=5, allow_redirects=False)\n    response.raise_for_status()\n    return response.content\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "HTTPS URL host is checked against a strict allowlist."
+  },
+  {
+    "id": "safe_pickle_01",
+    "code": "import json\n\ndef restore_preferences(payload):\n    data = json.loads(payload)\n    if not isinstance(data, dict):\n        raise ValueError('expected object')\n    allowed = {'theme', 'language'}\n    if set(data) - allowed:\n        raise ValueError('unknown preference')\n    return data\n",
+    "vulnerable": false,
+    "category": "safe",
+    "acceptable_cwes": [],
+    "notes": "Uses JSON data parsing and restricts accepted keys."
+  }
+]
