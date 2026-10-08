@@ -562,3 +562,45 @@ def test_validation_warning_logs_field_and_type_without_value(caplog):
     messages = [record.getMessage() for record in caplog.records]
     assert any("field=severity" in message and "type=str" in message for message in messages)
     assert all(secret_value not in message for message in messages)
+
+
+def test_validate_findings_defaults_missing_confidence():
+    from review_ai import _validate_findings
+    finding = _valid_finding()
+    finding.pop("confidence")
+    result = _validate_findings({"findings": [finding]})
+    assert len(result) == 1
+    assert result[0]["confidence"] == "medium"
+
+
+def test_validate_findings_defaults_invalid_confidence():
+    from review_ai import _validate_findings
+    result = _validate_findings({"findings": [_valid_finding(confidence=" very high ")]})
+    assert result[0]["confidence"] == "medium"
+
+
+def test_confidence_default_warning_logs_only_field_and_type(caplog):
+    from review_ai import _validate_findings
+    private_value = "private-confidence-value"
+    _validate_findings({"findings": [_valid_finding(confidence=private_value)]})
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("field=confidence" in message and "type=str" in message for message in messages)
+    assert all(private_value not in message for message in messages)
+
+
+def test_validate_findings_still_drops_missing_title_and_invalid_severity():
+    from review_ai import _validate_findings
+    missing_title = _valid_finding()
+    missing_title.pop("title")
+    assert _validate_findings({"findings": [missing_title]}) == []
+    assert _validate_findings({"findings": [_valid_finding(severity="urgent")]}) == []
+
+
+def test_render_accepts_finding_with_defaulted_confidence():
+    from render import render_review
+    from review_ai import _validate_findings
+    finding = _valid_finding()
+    finding.pop("confidence")
+    normalized = _validate_findings({"findings": [finding]})
+    assert normalized[0]["confidence"] == "medium"
+    assert "SQL injection" in render_review(normalized)

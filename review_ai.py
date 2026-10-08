@@ -80,7 +80,7 @@ def _validate_findings(data, drop_reasons=None):
         if isinstance(line, str) and line.isdigit():
             line = int(line)
         if line is not None and (not isinstance(line, int) or isinstance(line, bool) or line < 1):
-            drop("line", line)
+            line = None
 
         if isinstance(severity, str):
             severity = severity.strip().lower()
@@ -90,13 +90,15 @@ def _validate_findings(data, drop_reasons=None):
         if isinstance(confidence, str):
             confidence = confidence.strip().lower()
         if not isinstance(confidence, str) or confidence not in CONFIDENCES:
-            drop("confidence", confidence if "confidence" in item else _MISSING)
+            type_name = type(confidence).__name__ if "confidence" in item else "missing"
+            logger.warning("Defaulted finding metadata: field=confidence type=%s", type_name)
+            confidence = "medium"
 
         if cwe is not None:
             raw_cwe_values = cwe if isinstance(cwe, list) else [cwe]
             normalized_cwe = next((_normalize_cwe(value) for value in raw_cwe_values if _normalize_cwe(value)), None)
             if normalized_cwe is None:
-                drop("cwe", cwe)
+                cwe = None
             else:
                 cwe = normalized_cwe
 
@@ -108,9 +110,9 @@ def _validate_findings(data, drop_reasons=None):
         title = item.get("title", _MISSING)
         explanation = item.get("explanation", _MISSING)
         fix = item.get("fix", _MISSING)
-        if fix is _MISSING:
+        if not isinstance(fix, str) or not fix.strip():
             fix = "No specific fix provided."
-        for field, value in (("title", title), ("explanation", explanation), ("fix", fix)):
+        for field, value in (("title", title), ("explanation", explanation)):
             if not isinstance(value, str) or not value.strip():
                 drop(field, value)
 
