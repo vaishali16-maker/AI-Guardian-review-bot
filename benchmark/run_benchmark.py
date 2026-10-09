@@ -19,6 +19,12 @@ import review_ai
 
 MODEL = "openai/gpt-oss-120b"
 ENDPOINT = "https://api.groq.com/openai/v1/chat/completions"
+CONSERVATIVE_PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "v2_conservative.txt"
+NAIVE_PROMPT_TEMPLATE = (
+    "You are a security-focused code reviewer. Review this code diff for security vulnerabilities, "
+    "hardcoded secrets, injection risks, and unsafe patterns. Explain issues in plain language "
+    "for a beginner. If there are no issues, say so briefly.\n\nDiff:\n{diff_text}"
+)
 SEVERITY_RANK = {"low": 1, "medium": 2, "high": 3, "critical": 4}
 
 # Substrings used by the hardened scorer when a finding has no matching CWE.
@@ -96,13 +102,7 @@ def score_output(case, output, prompt="hardened"):
 
 
 def _naive_review(diff_text):
-    prompt = (
-        "You are a security-focused code reviewer. Review this code diff for "
-        "security vulnerabilities, hardcoded secrets, injection risks, and unsafe "
-        "patterns. Explain issues in plain language for a beginner. If there are "
-        "no issues, say so briefly.\n\n"
-        f"Diff:\n{diff_text}"
-    )
+    prompt = NAIVE_PROMPT_TEMPLATE.format(diff_text=diff_text)
     response = requests.post(
         ENDPOINT,
         headers={
@@ -119,14 +119,20 @@ def _naive_review(diff_text):
         raise ValueError("Naive model response did not contain message content") from exc
 
 
-def _run_once(case, prompt):
+def _diff_text(case):
     code_lines = case["code"].splitlines()
-    diff_text = (
+    return (
         f"File: {case['id']}.py\n@@ -0,0 +1,{len(code_lines)} @@\n"
         + "\n".join(f"+{line}" for line in code_lines)
     )
+
+
+def _run_once(case, prompt):
+    diff_text = _diff_text(case)
     if prompt == "naive":
         return _naive_review(diff_text)
+    if prompt == "conservative":
+        return review_ai.get_ai_review(diff_text, system_prompt=CONSERVATIVE_PROMPT_PATH.read_text(encoding="utf-8"))
     return review_ai.get_ai_review(diff_text)
 
 
@@ -232,6 +238,16 @@ def prompt_sha256(prompt_text=None):
     return hashlib.sha256(prompt_text.encode("utf-8")).hexdigest()
 
 
+def prompt_text_for_mode(prompt, diff_text=None):
+    if prompt == "hardened":
+        return review_ai.SYSTEM_PROMPT
+    if prompt == "conservative":
+        return CONSERVATIVE_PROMPT_PATH.read_text(encoding="utf-8")
+    if prompt == "naive":
+        return NAIVE_PROMPT_TEMPLATE.format(diff_text="" if diff_text is None else diff_text)
+    raise ValueError(f"Unknown prompt mode: {prompt}")
+
+
 def result_paths(directory, tag=None):
     suffix = f"_{tag}" if tag else ""
     return Path(directory) / f"RESULTS{suffix}.md", Path(directory) / f"results{suffix}.json"
@@ -247,8 +263,16 @@ def write_results(prompt, cases, results, summary, tag=None, output_dir=None):
     benchmark_dir = Path(__file__).resolve().parent
     output_dir = Path(output_dir) if output_dir is not None else benchmark_dir
     cases_hash = hashlib.sha256((benchmark_dir / "cases.json").read_bytes()).hexdigest()
-    prompt_hash = prompt_sha256() if prompt == "hardened" else "not applicable (naive prompt)"
-    payload = {"prompt": prompt, "summary": summary, "cases": results}
+    if prompt == "naive":
+        prompt_hashes = {
+            case["id"]: prompt_sha256(prompt_text_for_mode(prompt, _diff_text(case)))
+            for case in cases
+        }
+        prompt_hash = "case-specific; see exact hashes below"
+    else:
+        prompt_hashes = None
+        prompt_hash = prompt_sha256(prompt_text_for_mode(prompt))
+    payload = {"prompt": prompt, "prompt_sha256": prompt_hashes or prompt_hash, "summary": summary, "cases": results}
     markdown_path, json_path = result_paths(output_dir, tag)
     json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
@@ -256,7 +280,7 @@ def write_results(prompt, cases, results, summary, tag=None, output_dir=None):
         "# Guardian Review AI benchmark results",
         "",
         f"Prompt mode: **{prompt}**",
-        f"SYSTEM_PROMPT SHA-256: `{prompt_hash}`",
+        f"Prompt SHA-256: `{prompt_hash}`",
         f"Date: {date.today().isoformat()}",
         "",
         f"Cases SHA-256: `{cases_hash}`",
@@ -277,12 +301,23 @@ def write_results(prompt, cases, results, summary, tag=None, output_dir=None):
         f"| Three-run consistency | {summary['consistency']:.1%} |",
         f"| Parse errors | {summary['parse_errors']} |",
         f"| Dropped findings | {summary['dropped_findings']} |",
+    ]
+    if prompt == "naive":
+        lines.extend([
+            "",
+            "Prompt SHA-256 by case (hashes cover the exact prompt text sent, including each diff):",
+            "",
+            "| Case | SHA-256 |",
+            "|---|---|",
+        ])
+        lines.extend(f"| {case_id} | `{digest}` |" for case_id, digest in prompt_hashes.items())
+    lines.extend([
         "",
         "## Recall by vulnerable category",
         "",
         "| Category | Detected runs | Missed runs | Recall |",
         "|---|---:|---:|---:|",
-    ]
+    ])
     for category, stats in sorted(summary["per_category"].items()):
         lines.append(f"| {category} | {stats['detected']} | {stats['missed']} | {stats['recall']:.1%} |")
     markdown_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
@@ -291,7 +326,7 @@ def write_results(prompt, cases, results, summary, tag=None, output_dir=None):
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, default=None, help="Run only the first N cases")
-    parser.add_argument("--prompt", choices=("hardened", "naive"), default="hardened")
+    parser.add_argument("--prompt", choices=("hardened", "conservative", "naive"), default="hardened")
     parser.add_argument("--tag", type=_tag_name, default=None, help="Write to tagged results files without overwriting defaults")
     args = parser.parse_args(argv)
     if args.limit is not None and args.limit < 0:

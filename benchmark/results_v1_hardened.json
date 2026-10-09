@@ -1,0 +1,2772 @@
+{
+  "prompt": "hardened",
+  "summary": {
+    "recall": 1.0,
+    "per_category": {
+      "sql_injection": {
+        "detected": 9,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "hardcoded_secret": {
+        "detected": 9,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "code_execution": {
+        "detected": 6,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "command_injection": {
+        "detected": 6,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "path_traversal": {
+        "detected": 6,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "insecure_deserialization": {
+        "detected": 6,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "weak_crypto": {
+        "detected": 6,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "tls_verification_disabled": {
+        "detected": 3,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "debug_mode_enabled": {
+        "detected": 3,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "insecure_randomness": {
+        "detected": 6,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "xss": {
+        "detected": 9,
+        "missed": 0,
+        "recall": 1.0
+      },
+      "ssrf": {
+        "detected": 6,
+        "missed": 0,
+        "recall": 1.0
+      }
+    },
+    "false_positive_rate": 0.28888888888888886,
+    "precision": 0.8522727272727273,
+    "consistency": 0.925,
+    "parse_errors": 0,
+    "dropped_findings": 0,
+    "counts": {
+      "true_positive_runs": 75,
+      "false_negative_runs": 0,
+      "false_positive_runs": 13,
+      "true_negative_runs": 32,
+      "safe_cases": 15,
+      "vulnerable_cases": 25
+    }
+  },
+  "cases": [
+    {
+      "id": "sqli_01",
+      "vulnerable": true,
+      "category": "sql_injection",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "sqli_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-89",
+                "title": "SQL Injection via string concatenation",
+                "explanation": "User-controlled 'name' is concatenated directly into the SQL query, enabling an attacker to inject arbitrary SQL statements that can read, modify, or delete data in the database.",
+                "fix": "Use a parameterized query with placeholders so the SQLite driver safely escapes the input value.",
+                "fix_code": "def load_account(name):\n    db = sqlite3.connect('app.db')\n    sql = \"SELECT * FROM accounts WHERE name = ?\"\n    return db.execute(sql, (name,)).fetchall()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "sqli_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-89",
+                "title": "SQL Injection via string concatenation",
+                "explanation": "The function concatenates the user\u2011provided 'name' directly into the SQL statement, allowing an attacker to inject malicious SQL that can read, modify, or delete data in the database.",
+                "fix": "Use a parameterized query with placeholders instead of building the SQL string with user input.",
+                "fix_code": "def load_account(name):\n    db = sqlite3.connect('app.db')\n    sql = \"SELECT * FROM accounts WHERE name = ?\"\n    return db.execute(sql, (name,)).fetchall()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "sqli_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-89",
+                "title": "SQL Injection via string concatenation",
+                "explanation": "User-controlled 'name' is concatenated directly into the SQL query, allowing an attacker to inject arbitrary SQL statements that can read, modify, or delete data in the database.",
+                "fix": "Replace the string concatenation with a parameterized query using placeholders so the input is safely bound as a value.",
+                "fix_code": "def load_account(name):\n    db = sqlite3.connect('app.db')\n    sql = \"SELECT * FROM accounts WHERE name = ?\"\n    return db.execute(sql, (name,)).fetchall()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "sqli_02",
+      "vulnerable": true,
+      "category": "sql_injection",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "sqli_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-89",
+                "title": "SQL Injection via string interpolation",
+                "explanation": "The function builds the SQL query by directly embedding the untrusted `order_id` value using an f\u2011string. An attacker can supply a crafted value (e.g., \"1; DROP TABLE orders;--\") that alters the query logic, leading to data leakage, modification, or destruction.",
+                "fix": "Use a parameterized query with SQLite placeholders so the database driver safely escapes the input value, and close the connection after use.",
+                "fix_code": "def find_order(order_id):\n    conn = sqlite3.connect('orders.db')\n    try:\n        cursor = conn.execute('SELECT * FROM orders WHERE id = ?', (order_id,))\n        return cursor.fetchone()\n    finally:\n        conn.close()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "sqli_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-89",
+                "title": "SQL Injection via string interpolation",
+                "explanation": "The function builds the SQL statement using an f\u2011string that directly inserts the unvalidated `order_id` value. An attacker can supply a crafted `order_id` such as `1; DROP TABLE orders;--` to execute arbitrary SQL commands, leading to data leakage, modification, or destruction.",
+                "fix": "Use a parameterized query (prepared statement) so the database driver treats the input as data, not code.",
+                "fix_code": "def find_order(order_id):\n    db = sqlite3.connect('orders.db')\n    query = \"SELECT * FROM orders WHERE id = ?\"\n    return db.execute(query, (order_id,)).fetchone()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "sqli_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-89",
+                "title": "SQL injection via string interpolation",
+                "explanation": "The function builds the SQL statement by directly embedding the untrusted order_id value into the query string. An attacker can supply a crafted order_id (e.g., \"1; DROP TABLE orders;--\") causing arbitrary SQL commands to be executed, leading to data leakage, modification, or destruction.",
+                "fix": "Replace the string\u2011formatted query with a parameterized query using SQLite placeholders, and pass the order_id as a separate argument so the database driver handles proper escaping. Also close the connection after use.",
+                "fix_code": "def find_order(order_id):\n    conn = sqlite3.connect('orders.db')\n    try:\n        cursor = conn.execute('SELECT * FROM orders WHERE id = ?', (order_id,))\n        return cursor.fetchone()\n    finally:\n        conn.close()",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "sqli_03",
+      "vulnerable": true,
+      "category": "sql_injection",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "sqli_03.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-89",
+                "title": "SQL Injection via string formatting",
+                "explanation": "User-controlled 'term' is concatenated into the SQL query using Python string formatting, allowing an attacker to inject arbitrary SQL code that will be executed by the database.",
+                "fix": "Use a parameterized query with placeholders provided by the DB-API instead of building the query string with user input.",
+                "fix_code": "def search_products(cursor, term):\n    pattern = f\"%{term}%\"\n    sql = \"SELECT sku, title FROM products WHERE title LIKE %s\"\n    cursor.execute(sql, (pattern,))\n    return cursor.fetchall()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "sqli_03.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-89",
+                "title": "SQL injection via string formatting",
+                "explanation": "User-supplied 'term' is concatenated into the query string using Python's % operator, allowing an attacker to inject arbitrary SQL code that will be executed by the database.",
+                "fix": "Use a parameterized query instead of string formatting so the database driver safely escapes the user input.",
+                "fix_code": "def search_products(cursor, term):\n    pattern = f\"%{term}%\"\n    sql = \"SELECT sku, title FROM products WHERE title LIKE %s\"\n    cursor.execute(sql, (pattern,))\n    return cursor.fetchall()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "sqli_03.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-89",
+                "title": "SQL Injection via string formatting",
+                "explanation": "User-controlled term is concatenated into the SQL query using Python string formatting, allowing an attacker to inject malicious SQL that can modify the query logic or expose data.",
+                "fix": "Use a parameterized query with placeholders instead of formatting the query string, passing the pattern as a query parameter.",
+                "fix_code": "def search_products(cursor, term):\n    pattern = f\"%{term}%\"\n    sql = \"SELECT sku, title FROM products WHERE title LIKE %s\"\n    cursor.execute(sql, (pattern,))\n    return cursor.fetchall()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "secret_01",
+      "vulnerable": true,
+      "category": "hardcoded_secret",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "secret_01.py",
+                "line": 1,
+                "severity": "high",
+                "cwe": "CWE-259",
+                "title": "Hardcoded API key",
+                "explanation": "The source file contains a hard\u2011coded payment API key (\"sk_test_fictional_000000\"). If the repository is shared, leaked, or accessed by an attacker, the key can be extracted and used to perform unauthorized charges or view sensitive payment data, leading to financial loss and data breach.",
+                "fix": "Remove the hard\u2011coded key and load the API key from a secure source such as an environment variable, a secrets manager, or a protected configuration file that is not checked into version control.",
+                "fix_code": "import os\n\n# Load the API key from an environment variable at runtime\nPAYMENT_API_KEY = os.getenv(\"PAYMENT_API_KEY\")\nif not PAYMENT_API_KEY:\n    raise RuntimeError(\"PAYMENT_API_KEY environment variable not set\")\n\ndef create_charge(client, amount):\n    client.api_key = PAYMENT_API_KEY\n    return client.charge(amount)",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "secret_01.py",
+                "line": 1,
+                "severity": "high",
+                "cwe": "CWE-798",
+                "title": "Hard-coded API key",
+                "explanation": "The payment API key is embedded directly in the source code, allowing anyone with access to the code repository to retrieve valid credentials and potentially perform unauthorized transactions.",
+                "fix": "Remove the hard-coded key and load the API key from a secure source such as an environment variable, secret manager, or configuration file with restricted access.",
+                "fix_code": "import os\nPAYMENT_API_KEY = os.getenv(\"PAYMENT_API_KEY\")\nif not PAYMENT_API_KEY:\n    raise RuntimeError(\"PAYMENT_API_KEY not set\")",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "secret_01.py",
+                "line": 1,
+                "severity": "high",
+                "cwe": "CWE-798",
+                "title": "Hardcoded API key",
+                "explanation": "The payment API key is embedded directly in the source code, allowing anyone with access to the repository to retrieve it and potentially perform unauthorized transactions against the payment service.",
+                "fix": "Remove the hardcoded key and load it from a secure source such as an environment variable, secret manager, or encrypted configuration at runtime.",
+                "fix_code": "import os\nPAYMENT_API_KEY = os.getenv(\"PAYMENT_API_KEY\")\n\ndef create_charge(client, amount):\n    client.api_key = PAYMENT_API_KEY\n    return client.charge(amount)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "secret_02",
+      "vulnerable": true,
+      "category": "hardcoded_secret",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "secret_02.py",
+                "line": 1,
+                "severity": "high",
+                "cwe": "CWE-259",
+                "title": "Hard-coded password",
+                "explanation": "The password is embedded directly in source code, allowing anyone with access to the repository to retrieve valid credentials for the archive service, leading to unauthorized access and potential data breach.",
+                "fix": "Remove the hard-coded password and retrieve it securely at runtime, e.g., from an environment variable, configuration service, or secret manager.",
+                "fix_code": "import os\n\ndef connect_to_archive():\n    connection = ArchiveConnection(\n        host='archive.internal',\n        username='worker',\n        password=os.getenv('ARCHIVE_PASSWORD'),\n    )\n    return connection.open()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "secret_02.py",
+                "line": 1,
+                "severity": "high",
+                "cwe": "CWE-259",
+                "title": "Hard-coded service password",
+                "explanation": "The password is stored in source code, which can be exposed through version control, backups, or insider threats, allowing attackers to authenticate to the archive service and potentially exfiltrate or modify data.",
+                "fix": "Remove the hard-coded password and retrieve it securely at runtime, e.g., from environment variables, a secrets manager, or a protected configuration file with restricted access.",
+                "fix_code": "import os\n\ndef connect_to_archive():\n    connection = ArchiveConnection(\n        host='archive.internal',\n        username='worker',\n        password=os.getenv('ARCHIVE_SERVICE_PASSWORD'),\n    )\n    return connection.open()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "secret_02.py",
+                "line": 1,
+                "severity": "high",
+                "cwe": "CWE-259",
+                "title": "Hard-coded password",
+                "explanation": "The password is stored directly in source code, allowing anyone with access to the repository or compiled artifacts to retrieve valid credentials for the archive service, leading to unauthorized access.",
+                "fix": "Remove the hard\u2011coded password and retrieve it securely at runtime (e.g., from an environment variable, a secrets manager, or a protected configuration file).",
+                "fix_code": "import os\n\n# Retrieve password securely from environment variable\nSERVICE_PASSWORD = os.getenv('ARCHIVE_SERVICE_PASSWORD')\nif not SERVICE_PASSWORD:\n    raise RuntimeError('Archive service password not set')\n\ndef connect_to_archive():\n    connection = ArchiveConnection(\n        host='archive.internal',\n        username='worker',\n        password=SERVICE_PASSWORD,\n    )\n    return connection.open()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "exec_01",
+      "vulnerable": true,
+      "category": "code_execution",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "exec_01.py",
+                "line": 2,
+                "severity": "high",
+                "cwe": "CWE-95",
+                "title": "Use of eval on untrusted input leads to code execution",
+                "explanation": "The function calculate_expression directly passes user\u2011supplied input to Python's eval(). An attacker can provide malicious code (e.g., __import__('os').system('rm -rf /')) which will be executed with the privileges of the running process, leading to arbitrary code execution, data theft, or system compromise.",
+                "fix": "Replace eval with a safe parsing method such as ast.literal_eval for literal expressions, or implement a custom expression evaluator that only supports the intended operations. Validate or whitelist allowed symbols before evaluation.",
+                "fix_code": "import ast\n\ndef calculate_expression(source):\n    # Only allow literal structures (numbers, strings, tuples, lists, dicts, booleans, None)\n    try:\n        result = ast.literal_eval(source)\n    except (ValueError, SyntaxError):\n        raise ValueError('Invalid or unsafe expression')\n    return result\n\nif __name__ == '__main__':\n    expr = input('expression: ')\n    print(calculate_expression(expr))\n",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "exec_01.py",
+                "line": 2,
+                "severity": "high",
+                "cwe": "CWE-95",
+                "title": "Unsafe use of eval on untrusted input",
+                "explanation": "The function calculate_expression directly passes user\u2011supplied data to eval, allowing an attacker to execute arbitrary Python code on the host, leading to full system compromise (e.g., reading files, spawning processes, modifying data).",
+                "fix": "Replace eval with a safe parser such as ast.literal_eval for literal evaluation, or implement a restricted expression evaluator that only supports the intended arithmetic operators.",
+                "fix_code": "import ast\n\ndef calculate_expression(source):\n    # Safely evaluate arithmetic expressions using ast.parse\n    try:\n        node = ast.parse(source, mode='eval')\n        for subnode in ast.walk(node):\n            if not isinstance(subnode, (ast.Expression, ast.BinOp, ast.UnaryOp, ast.Num, ast.Load,\n                                      ast.Add, ast.Sub, ast.Mult, ast.Div, ast.Mod, ast.Pow,\n                                      ast.USub, ast.UAdd, ast.Constant)):\n                raise ValueError('Unsupported expression')\n        return eval(compile(node, '<string>', mode='eval'))\n    except Exception as e:\n        raise ValueError('Invalid expression') from e",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "exec_01.py",
+                "line": 2,
+                "severity": "high",
+                "cwe": "CWE-95",
+                "title": "Use of eval on untrusted input leads to code execution",
+                "explanation": "The function calculate_expression directly passes user\u2011supplied input to eval, allowing an attacker to execute arbitrary Python code on the host system, leading to full compromise.",
+                "fix": "Replace eval with a safe parsing method such as ast.literal_eval for literal expressions, or implement a proper expression parser that only supports the intended operations. Validate or whitelist allowed characters before evaluation.",
+                "fix_code": "import ast\n\ndef calculate_expression(source):\n    # Only allow literal expressions (numbers, strings, tuples, lists, dicts, booleans, None)\n    try:\n        node = ast.parse(source, mode='eval')\n        for subnode in ast.walk(node):\n            if not isinstance(subnode, (ast.Expression, ast.Num, ast.Str, ast.Bytes, ast.Tuple, ast.List, ast.Dict, ast.Set, ast.NameConstant)):\n                raise ValueError('Unsupported expression')\n        return ast.literal_eval(node)\n    except Exception as e:\n        raise ValueError('Invalid expression')\n\nif __name__ == '__main__':\n    print(calculate_expression(input('expression: ')))",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "exec_02",
+      "vulnerable": true,
+      "category": "code_execution",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "exec_02.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-94",
+                "title": "Unsafe exec of user-supplied code",
+                "explanation": "The function run_plugin executes the value of request.form['plugin'] directly with exec(), allowing an attacker to run arbitrary Python code on the server with the privileges of the application, leading to full remote code execution.",
+                "fix": "Replace exec with a safe, sandboxed plugin mechanism. Validate or restrict the supplied code, load trusted plugins as modules, or use a restricted execution environment such as a separate process with limited permissions.",
+                "fix_code": "def run_plugin(plugin_name, context):\n    # Load only pre\u2011approved plugins from a known directory\n    import importlib.util, os\n    plugins_dir = '/path/to/approved_plugins'\n    safe_path = os.path.abspath(os.path.join(plugins_dir, plugin_name + '.py'))\n    if not safe_path.startswith(plugins_dir):\n        raise ValueError('Invalid plugin')\n    spec = importlib.util.spec_from_file_location('plugin', safe_path)\n    module = importlib.util.module_from_spec(spec)\n    spec.loader.exec_module(module)\n    # Plugins must define a 'run' function that receives the context\n    return module.run(context)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "exec_02.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-94",
+                "title": "Unsafe execution of untrusted code via exec",
+                "explanation": "The function run_plugin executes user\u2011supplied plugin_text with exec(). Because the plugin text comes directly from request.form['plugin'], an attacker can supply arbitrary Python code that runs with the privileges of the application, leading to full remote code execution and server compromise.",
+                "fix": "Remove the use of exec on untrusted input. Validate or sandbox the plugin code, or replace the dynamic execution model with a safe, predefined plugin interface that only exposes intended functionality.",
+                "fix_code": "def run_plugin(plugin_text, context):\n    # Example safe approach: only allow a whitelist of safe operations using ast\n    import ast\n    allowed_nodes = {ast.Module, ast.Expr, ast.Call, ast.Name, ast.Load, ast.Constant}\n    tree = ast.parse(plugin_text, mode='exec')\n    for node in ast.walk(tree):\n        if type(node) not in allowed_nodes:\n            raise ValueError('Disallowed operation in plugin code')\n    # Execute in a restricted namespace without builtins\n    safe_globals = {'__builtins__': {}, 'context': context}\n    exec(compile(tree, filename='<plugin>', mode='exec'), safe_globals)\n    return safe_globals.get('result')\n",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "exec_02.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-94",
+                "title": "Arbitrary code execution via untrusted plugin input",
+                "explanation": "The function run_plugin executes the raw string received from request.form['plugin'] using Python's exec(). An attacker can supply malicious Python code that runs with the server's privileges, allowing data theft, privilege escalation, or full system compromise.",
+                "fix": "Validate and sandbox the plugin code instead of executing it directly. Either restrict the language to a safe subset, use a sandboxed interpreter, or avoid exec entirely by defining a limited API that plugins can call.",
+                "fix_code": "def run_plugin(plugin_text, context):\n    # Example: use ast to ensure only expressions are allowed\n    import ast\n    try:\n        tree = ast.parse(plugin_text, mode='eval')\n    except SyntaxError:\n        raise ValueError('Only simple expressions are allowed')\n    # Optionally walk the AST to whitelist nodes\n    allowed_nodes = {ast.Expression, ast.BinOp, ast.Num, ast.Name, ast.Load, ast.UnaryOp, ast.Call}\n    for node in ast.walk(tree):\n        if type(node) not in allowed_nodes:\n            raise ValueError('Disallowed expression in plugin')\n    # Evaluate safely with limited globals\n    safe_globals = {'__builtins__': {}, 'context': context}\n    result = eval(compile(tree, filename='<plugin>', mode='eval'), safe_globals)\n    return result",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "cmd_01",
+      "vulnerable": true,
+      "category": "command_injection",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "cmd_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-78",
+                "title": "OS command injection via unsanitized report_name",
+                "explanation": "The function concatenates the user\u2011supplied report_name directly into a shell command and executes it with shell=True, allowing an attacker to inject arbitrary commands (e.g., \"report.txt; rm -rf /\"). This can lead to unauthorized file access or system compromise.",
+                "fix": "Validate the report_name against an allowlist or safe pattern and invoke subprocess.run without a shell, passing the command and argument as a list so that the filename cannot be interpreted as additional commands.",
+                "fix_code": "import os\nimport subprocess\n\ndef show_report(report_name):\n    # Allow only alphanumeric filenames with .txt extension\n    if not report_name.isalnum() or not report_name.endswith('.txt'):\n        raise ValueError('Invalid report name')\n    report_path = os.path.join('/srv/reports', report_name)\n    # Ensure the path stays within the intended directory\n    if not os.path.realpath(report_path).startswith('/srv/reports/'):\n        raise ValueError('Invalid report path')\n    result = subprocess.run(['cat', report_path], capture_output=True, text=True, check=True)\n    return result.stdout",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "cmd_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-78",
+                "title": "OS command injection via unsanitized input",
+                "explanation": "The function concatenates the user\u2011controlled 'report_name' into a shell command string and executes it with shell=True, allowing an attacker to inject arbitrary commands (e.g., \"report.txt; rm -rf /\"). This can lead to remote code execution on the server.",
+                "fix": "Validate the report name to allow only safe characters or known filenames and invoke the command without a shell by passing the command and arguments as a list to subprocess.run.",
+                "fix_code": "def show_report(report_name):\n    # Allow only alphanumeric filenames with optional .txt extension\n    import re\n    if not re.fullmatch(r'[A-Za-z0-9_-]+\\.txt', report_name):\n        raise ValueError('Invalid report name')\n    path = f'/srv/reports/{report_name}'\n    result = subprocess.run(['cat', path], capture_output=True, text=True)\n    return result.stdout",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "cmd_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-78",
+                "title": "OS command injection via unsanitized input",
+                "explanation": "The function concatenates the user\u2011controlled 'report_name' into a shell command string and executes it with shell=True, allowing an attacker to inject arbitrary commands (e.g., \"report.txt; rm -rf /\"). This can lead to remote code execution on the server.",
+                "fix": "Validate that 'report_name' contains only safe characters and use subprocess.run with a list of arguments instead of a shell string, removing shell=True. This prevents the input from being interpreted as separate commands.",
+                "fix_code": "import os\nimport subprocess\n\ndef show_report(report_name):\n    # Allow only alphanumeric filenames with optional .txt extension\n    if not report_name.isalnum() and not report_name.replace('.','',1).isalnum():\n        raise ValueError('Invalid report name')\n    # Build a safe path\n    base_dir = '/srv/reports'\n    safe_path = os.path.join(base_dir, report_name)\n    # Ensure the path stays within the intended directory\n    if not os.path.realpath(safe_path).startswith(os.path.realpath(base_dir)):\n        raise ValueError('Path traversal detected')\n    result = subprocess.run(['cat', safe_path], capture_output=True, text=True, check=True)\n    return result.stdout",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "cmd_02",
+      "vulnerable": true,
+      "category": "command_injection",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "cmd_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-78",
+                "title": "OS command injection via unsanitized input",
+                "explanation": "The function builds a shell command string with the user\u2011supplied `folder` argument and executes it with `os.system`. An attacker can supply a folder name containing shell metacharacters (e.g., `; rm -rf /`) to execute arbitrary commands on the host.",
+                "fix": "Replace the string\u2011based command with a list\u2011based call to `subprocess.run` (or `subprocess.check_output`) and avoid invoking a shell. Validate that the provided path is a legitimate directory before archiving.",
+                "fix_code": "import os\nimport subprocess\n\ndef compress_folder(folder):\n    # Ensure the path exists and is a directory\n    if not os.path.isdir(folder):\n        raise ValueError(\"Invalid folder path\")\n    archive_path = \"/tmp/archive.tgz\"\n    # Use a list of arguments to avoid shell interpretation\n    subprocess.run([\"tar\", \"-czf\", archive_path, folder], check=True)\n    return archive_path",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "cmd_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-78",
+                "title": "OS Command Injection via unsanitized folder argument",
+                "explanation": "The function builds a shell command with an f\u2011string that directly incorporates the `folder` parameter. If an attacker controls `folder`, they can inject additional shell commands (e.g., `folder='.; rm -rf /'`) which will be executed by `os.system`, leading to arbitrary command execution on the host.",
+                "fix": "Validate the folder path and avoid invoking a shell. Use the `subprocess` module with a list of arguments or the `tarfile` library to create the archive safely.",
+                "fix_code": "import os\nimport subprocess\n\ndef compress_folder(folder):\n    # Ensure the folder exists and is a directory\n    if not os.path.isdir(folder):\n        raise ValueError('Invalid folder path')\n    output_path = '/tmp/archive.tgz'\n    # Use subprocess without a shell to prevent injection\n    subprocess.run(['tar', '-czf', output_path, folder], check=True)\n    return output_path\n",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "cmd_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-78",
+                "title": "OS command injection via untrusted folder argument",
+                "explanation": "The function builds a shell command with an f\u2011string that directly incorporates the `folder` parameter, then executes it with `os.system`. If an attacker can control `folder`, they can inject shell metacharacters (e.g., `; rm -rf /`) and execute arbitrary commands with the privileges of the process.",
+                "fix": "Replace the string\u2011based shell invocation with a direct subprocess call that passes the folder as a separate argument, avoiding the shell. Also validate that the folder exists and is a directory before archiving.",
+                "fix_code": "import os\nimport subprocess\n\ndef compress_folder(folder):\n    # Ensure the path is a directory and does not contain malicious characters\n    if not os.path.isdir(folder):\n        raise ValueError('Provided path is not a directory')\n    archive_path = '/tmp/archive.tgz'\n    # Use a list of arguments to avoid shell interpretation\n    subprocess.run(['tar', '-czf', archive_path, folder], check=True)\n    return archive_path",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "path_01",
+      "vulnerable": true,
+      "category": "path_traversal",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "path_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-22",
+                "title": "Directory traversal via unsanitized filename",
+                "explanation": "The function read_note concatenates a user\u2011controlled value (request.args['name']) directly to a fixed directory path. An attacker can supply path\u2011traversal sequences such as \"../\" to escape /srv/notes and read arbitrary files on the server, leading to information disclosure.",
+                "fix": "Validate and sanitize the supplied filename. Restrict it to a safe set of characters, strip directory components, and verify that the resolved path remains within the intended base directory before reading the file.",
+                "fix_code": "def read_note(name):\n    base = Path('/srv/notes')\n    # Remove any path separators and resolve to an absolute path\n    safe_name = Path(name).name\n    path = (base / safe_name).resolve()\n    if not str(path).startswith(str(base.resolve())):\n        raise ValueError('Invalid note name')\n    return path.read_text(encoding='utf-8')",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "path_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-22",
+                "title": "Path Traversal via unsanitized filename",
+                "explanation": "The 'name' parameter from the HTTP request is concatenated directly to the notes directory path without validation. An attacker can supply path traversal sequences such as '../../etc/passwd' to cause Path.read_text to read files outside /srv/notes, leading to disclosure of arbitrary files on the server.",
+                "fix": "Validate and sanitize the 'name' argument before using it in a filesystem path. Resolve the combined path and ensure it remains within the intended base directory, or restrict the name to a whitelist of allowed filenames.",
+                "fix_code": "def read_note(name):\n    base_dir = Path('/srv/notes').resolve()\n    target_path = (base_dir / name).resolve()\n    if not str(target_path).startswith(str(base_dir) + os.sep):\n        raise ValueError('Invalid note name')\n    return target_path.read_text(encoding='utf-8')",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "path_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-22",
+                "title": "Path traversal via unsanitized filename",
+                "explanation": "The 'name' parameter from the request is concatenated with a fixed directory without validation, allowing an attacker to supply '../' sequences and read arbitrary files outside /srv/notes.",
+                "fix": "Validate or sanitize the 'name' value so that it cannot contain path traversal characters, and ensure the resolved path stays within the intended directory before reading the file.",
+                "fix_code": "def read_note(name):\n    base_dir = Path('/srv/notes').resolve()\n    target_path = (base_dir / name).resolve()\n    if not str(target_path).startswith(str(base_dir) + os.sep):\n        raise ValueError('Invalid note name')\n    return target_path.read_text(encoding='utf-8')",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "path_02",
+      "vulnerable": true,
+      "category": "path_traversal",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "path_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-22",
+                "title": "Path traversal via unvalidated filename",
+                "explanation": "The function concatenates a user\u2011controlled filename with a fixed directory using os.path.join and then opens the resulting path without any validation. An attacker can supply values such as \"../../etc/passwd\" or an absolute path to cause the code to read files outside /var/app/exports, leading to information disclosure.",
+                "fix": "Validate and sanitize the supplied filename so that the resolved path stays within the intended export directory. Reject or normalize any path that attempts to traverse outside the base directory.",
+                "fix_code": "import os\n\ndef export_file(filename):\n    base_dir = '/var/app/exports'\n    # Resolve the absolute path of the target file\n    target_path = os.path.abspath(os.path.join(base_dir, filename))\n    # Ensure the target path is still within the base directory\n    if not target_path.startswith(os.path.abspath(base_dir) + os.sep):\n        raise ValueError('Invalid filename: path traversal detected')\n    with open(target_path, encoding='utf-8') as handle:\n        return handle.read()",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "path_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-22",
+                "title": "Path traversal vulnerability",
+                "explanation": "The function concatenates a user\u2011controlled filename with a fixed directory using os.path.join and then opens the resulting path without validation. An attacker can supply \"../\" sequences or an absolute path to traverse out of /var/app/exports and read arbitrary files on the server.",
+                "fix": "Validate and sanitize the filename before building the path. Reject absolute paths and any path components that resolve outside the intended export directory, e.g., by normalizing the path and confirming it starts with the base directory.",
+                "fix_code": "BASE_DIR = '/var/app/exports'\n\ndef export_file(filename):\n    # Reject absolute paths\n    if os.path.isabs(filename):\n        raise ValueError('Invalid filename')\n    # Resolve the final path\n    target = os.path.normpath(os.path.join(BASE_DIR, filename))\n    # Ensure the resolved path is still within BASE_DIR\n    if not target.startswith(os.path.abspath(BASE_DIR) + os.sep):\n        raise ValueError('Path traversal detected')\n    with open(target, encoding='utf-8') as handle:\n        return handle.read()",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "path_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-22",
+                "title": "Path traversal via unvalidated filename",
+                "explanation": "The function concatenates a user\u2011controlled filename with a fixed directory using os.path.join and then opens the resulting path. An attacker can supply values such as \"../../etc/passwd\" or an absolute path to cause the code to read files outside /var/app/exports, leading to unauthorized disclosure of sensitive data.",
+                "fix": "Validate the supplied filename so that it cannot escape the intended export directory. Reject filenames containing path separators or resolve the final path and ensure it is still under the export base directory before opening the file.",
+                "fix_code": "import os\n\nEXPORT_ROOT = '/var/app/exports'\n\ndef export_file(filename):\n    # Reject absolute paths and path traversal components\n    if os.path.isabs(filename) or '..' in filename.split(os.path.sep):\n        raise ValueError('Invalid filename')\n    # Build the absolute path and verify it stays within EXPORT_ROOT\n    target = os.path.abspath(os.path.join(EXPORT_ROOT, filename))\n    if not target.startswith(os.path.abspath(EXPORT_ROOT) + os.path.sep):\n        raise ValueError('Invalid filename')\n    with open(target, encoding='utf-8') as handle:\n        return handle.read()",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "deserialize_01",
+      "vulnerable": true,
+      "category": "insecure_deserialization",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "deserialize_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-502",
+                "title": "Insecure deserialization using pickle",
+                "explanation": "An attacker can supply a crafted pickle payload that executes arbitrary code during deserialization, leading to remote code execution on the server.",
+                "fix": "Replace pickle with a safe serialization format such as JSON and validate the parsed data before use.",
+                "fix_code": "import json\n\ndef load_profile(uploaded_file):\n    data = uploaded_file.read().decode('utf-8')\n    profile = json.loads(data)\n    # Validate required fields\n    name = profile.get('name')\n    theme = profile.get('theme')\n    return {\"name\": name, \"theme\": theme}\n",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "deserialize_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-502",
+                "title": "Unsafe deserialization with pickle",
+                "explanation": "The function load_profile deserializes data from an uploaded file using pickle.loads, which can execute arbitrary code supplied by an attacker, leading to remote code execution.",
+                "fix": "Replace pickle deserialization with a safe format such as JSON, and validate the structure of the uploaded data before using it.",
+                "fix_code": "import json\n\ndef load_profile(uploaded_file):\n    data = uploaded_file.read()\n    # Ensure the uploaded content is valid JSON\n    try:\n        profile_dict = json.loads(data)\n    except json.JSONDecodeError:\n        raise ValueError('Invalid profile format')\n    # Access expected fields safely\n    name = profile_dict.get('name')\n    theme = profile_dict.get('theme')\n    return {\"name\": name, \"theme\": theme}\n\ndef profile_route(request):\n    return load_profile(request.files['profile'])\n",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "deserialize_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-502",
+                "title": "Insecure deserialization using pickle",
+                "explanation": "The function load_profile reads raw bytes from an uploaded file and passes them directly to pickle.loads. An attacker can upload a crafted pickle that executes arbitrary code during deserialization, leading to remote code execution on the server.",
+                "fix": "Replace pickle deserialization with a safe format such as JSON, and validate the structure of the parsed data before using it.",
+                "fix_code": "import json\n\ndef load_profile(uploaded_file):\n    # Read text data (assuming UTF-8 encoded JSON)\n    data = uploaded_file.read().decode('utf-8')\n    try:\n        profile_dict = json.loads(data)\n    except json.JSONDecodeError:\n        raise ValueError('Invalid profile format')\n    # Validate required fields\n    if not isinstance(profile_dict.get('name'), str) or not isinstance(profile_dict.get('theme'), str):\n        raise ValueError('Missing or invalid profile fields')\n    return {\"name\": profile_dict['name'], \"theme\": profile_dict['theme']}\n\ndef profile_route(request):\n    return load_profile(request.files['profile'])\n",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "deserialize_02",
+      "vulnerable": true,
+      "category": "insecure_deserialization",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "deserialize_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-502",
+                "title": "Unsafe YAML deserialization",
+                "explanation": "The code uses yaml.load with the default Loader on data supplied by the client (request.files['settings']). yaml.load can construct arbitrary Python objects, enabling remote code execution if an attacker provides a malicious YAML payload containing unsafe tags (e.g., !!python/object/apply).",
+                "fix": "Replace yaml.load with yaml.safe_load (or a restricted loader) so that only simple data types are deserialized, preventing execution of arbitrary code from untrusted YAML input.",
+                "fix_code": "options = yaml.safe_load(stream)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "deserialize_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-502",
+                "title": "Unsafe YAML deserialization",
+                "explanation": "The code uses yaml.load with yaml.Loader on user\u2011controlled input (request.files['settings']). yaml.Loader can construct arbitrary Python objects, allowing an attacker to supply a crafted YAML payload that triggers code execution on the server, leading to remote code execution.",
+                "fix": "Replace yaml.load with yaml.safe_load (or use a safe loader) so that only basic YAML types are parsed and no arbitrary objects can be instantiated from untrusted data.",
+                "fix_code": "def read_preferences(stream):\n    # Use safe_load to prevent execution of arbitrary objects\n    options = yaml.safe_load(stream)\n    return options.get('display', {}) if isinstance(options, dict) else {}",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "deserialize_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-502",
+                "title": "Unsafe YAML deserialization",
+                "explanation": "The code uses yaml.load with the default Loader on data supplied by the client (request.files['settings']). yaml.load can construct arbitrary Python objects, allowing an attacker to embed malicious YAML tags (e.g., !!python/object/apply) that execute code on the server, leading to remote code execution.",
+                "fix": "Replace yaml.load with yaml.safe_load (or a restricted loader) so that only simple data types are deserialized, and validate the resulting structure before use.",
+                "fix_code": "def read_preferences(stream):\n    # Use safe_load to prevent execution of arbitrary objects\n    options = yaml.safe_load(stream)\n    if not isinstance(options, dict):\n        raise ValueError('Invalid preferences format')\n    return options.get('display', {})\n",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "crypto_01",
+      "vulnerable": true,
+      "category": "weak_crypto",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "crypto_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-327",
+                "title": "Insecure password hashing using MD5",
+                "explanation": "The code hashes passwords with MD5, a fast, broken hash function without a salt. This allows attackers to perform efficient brute\u2011force or rainbow\u2011table attacks to recover passwords, compromising credential confidentiality.",
+                "fix": "Replace the MD5 hash with a slow, salted password\u2011hashing algorithm such as PBKDF2, bcrypt, or Argon2. Generate a random salt per password, store the salt alongside the hash, and use a sufficient iteration count to make cracking computationally expensive.",
+                "fix_code": "import os, hashlib, base64\n\ndef password_digest(password, salt=None, iterations=200000):\n    if salt is None:\n        salt = os.urandom(16)\n    dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, iterations)\n    return base64.b64encode(salt + dk).decode('utf-8')\n\ndef verify_password(password, stored):\n    data = base64.b64decode(stored.encode('utf-8'))\n    salt, dk = data[:16], data[16:]\n    return password_digest(password, salt) == stored",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "crypto_01.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-327",
+                "title": "Insecure password hashing with MD5",
+                "explanation": "The code hashes passwords using MD5 without a salt. MD5 is a fast, broken hash algorithm that enables efficient brute\u2011force and rainbow\u2011table attacks, allowing attackers to recover plaintext passwords from stored hashes.",
+                "fix": "Replace the MD5 hash with a slow, salted password\u2011hashing algorithm such as bcrypt, Argon2, or PBKDF2. Generate a random salt per password and store the salt alongside the derived key.",
+                "fix_code": "import os\nimport hashlib\nimport base64\n\ndef password_digest(password: str) -> str:\n    # Generate a random 16\u2011byte salt\n    salt = os.urandom(16)\n    # Derive a 32\u2011byte key using PBKDF2-HMAC-SHA256 with 100,000 iterations\n    dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100_000, dklen=32)\n    # Store salt and derived key together (base64\u2011encoded) for verification\n    return base64.b64encode(salt + dk).decode('utf-8')\n\ndef verify_password(password: str, stored: str) -> bool:\n    data = base64.b64decode(stored.encode('utf-8'))\n    salt, dk = data[:16], data[16:]\n    new_dk = hashlib.pbkdf2_hmac('sha256', password.encode('utf-8'), salt, 100_000, dklen=32)\n    return new_dk == dk",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "crypto_01.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-327",
+                "title": "Insecure password hashing using MD5",
+                "explanation": "The code hashes passwords with MD5, a broken and fast hash function, and does not use a salt. This allows attackers to use precomputed rainbow tables or brute\u2011force attacks to recover passwords, leading to credential compromise.",
+                "fix": "Replace MD5 with a dedicated password\u2011hashing algorithm such as bcrypt, Argon2, or PBKDF2, and include a unique salt for each password. Use a library that handles salting and work factor automatically.",
+                "fix_code": "import bcrypt\n\ndef password_digest(password: str) -> bytes:\n    # bcrypt automatically generates a salt and applies a work factor\n    return bcrypt.hashpw(password.encode('utf-8'), bcrypt.gensalt())\n\ndef verify_password(password: str, stored: bytes) -> bool:\n    return bcrypt.checkpw(password.encode('utf-8'), stored)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "crypto_02",
+      "vulnerable": true,
+      "category": "weak_crypto",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "crypto_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-327",
+                "title": "Insecure password hashing with SHA-1",
+                "explanation": "The code hashes passwords using SHA-1 without a salt. SHA-1 is a fast, broken hash function that enables efficient offline brute\u2011force and pre\u2011image attacks, allowing attackers to recover user passwords if the database is compromised.",
+                "fix": "Replace the raw SHA-1 hash with a dedicated password\u2011hashing algorithm (e.g., bcrypt, Argon2, or PBKDF2) that incorporates a unique salt and configurable work factor, and store the resulting hash string. Verify passwords using the same algorithm.",
+                "fix_code": "import bcrypt\n\ndef save_member(password):\n    # bcrypt automatically generates a salt and includes it in the stored hash\n    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())\n    database.insert_member(password_digest=hashed.decode())\n\ndef check_member(password, saved_hash):\n    # saved_hash should be the string retrieved from the database\n    return bcrypt.checkpw(password.encode(), saved_hash.encode())\n",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "crypto_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-327",
+                "title": "Use of insecure SHA-1 for password hashing",
+                "explanation": "SHA-1 is a fast, broken hash function that enables offline brute\u2011force and rainbow\u2011table attacks. Storing unsalted SHA-1 digests allows attackers to recover passwords if the database is compromised.",
+                "fix": "Replace SHA-1 with a dedicated password\u2011hashing algorithm (e.g., bcrypt, Argon2, or PBKDF2) and add a unique salt per user. Store the resulting hash string in the database.",
+                "fix_code": "import bcrypt\n\ndef save_member(password):\n    # bcrypt automatically generates a salt and includes it in the hash\n    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())\n    database.insert_member(password_digest=hashed.decode())\n\ndef check_member(password, saved):\n    # bcrypt performs a constant\u2011time comparison internally\n    return bcrypt.checkpw(password.encode(), saved.encode())",
+                "confidence": "high"
+              },
+              {
+                "file": "crypto_02.py",
+                "line": 8,
+                "severity": "high",
+                "cwe": "CWE-208",
+                "title": "Insecure direct string comparison enables timing attacks",
+                "explanation": "Comparing password hashes with the '==' operator can leak timing information, allowing an attacker to iteratively guess the correct hash value.",
+                "fix": "Use a constant\u2011time comparison function provided by a secure password\u2011hashing library (e.g., bcrypt.checkpw) instead of a direct equality check.",
+                "fix_code": "def check_member(password, saved):\n    return bcrypt.checkpw(password.encode(), saved.encode())",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "crypto_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-327",
+                "title": "Use of weak SHA-1 for password hashing",
+                "explanation": "SHA-1 is a fast, broken hash algorithm that allows attackers to perform efficient offline brute\u2011force or pre\u2011image attacks, especially because no salt is used. Compromised password hashes can be cracked, leading to credential theft and unauthorized access.",
+                "fix": "Replace the raw SHA-1 hash with a dedicated password\u2011hashing function such as bcrypt, Argon2, or PBKDF2 that incorporates a unique salt and configurable work factor, and store the resulting hash (including its parameters) in the database.",
+                "fix_code": "import bcrypt\n\ndef save_member(password):\n    # bcrypt automatically generates a salt and includes it in the stored hash\n    hashed = bcrypt.hashpw(password.encode(), bcrypt.gensalt())\n    database.insert_member(password_hash=hashed)\n\ndef check_member(password, stored_hash):\n    # bcrypt performs a constant\u2011time comparison internally\n    return bcrypt.checkpw(password.encode(), stored_hash)",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "tls_01",
+      "vulnerable": true,
+      "category": "tls_verification_disabled",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "tls_01.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-295",
+                "title": "Disabled SSL certificate verification",
+                "explanation": "The code disables TLS certificate verification by passing verify=False to requests.get, allowing man\u2011in\u2011the\u2011middle attackers to intercept and modify the HTTP response without detection.",
+                "fix": "Remove the verify=False argument so that the default certificate verification is performed, or explicitly provide a trusted CA bundle via the verify parameter.",
+                "fix_code": "response = requests.get(url, timeout=10)  # or response = requests.get(url, verify='/path/to/ca-bundle.pem', timeout=10)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "tls_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-295",
+                "title": "Disabled SSL certificate verification",
+                "explanation": "The code passes verify=False to requests.get, which disables TLS certificate validation. An attacker who can perform a man\u2011in\u2011the\u2011middle attack can intercept or modify the catalog data without detection.",
+                "fix": "Remove the verify=False flag or set it to True and, if needed, provide a trusted CA bundle so that HTTPS connections are properly validated.",
+                "fix_code": "response = requests.get(url, timeout=10)  # default verify=True\n# or, to use a custom CA bundle:\n# response = requests.get(url, verify='/path/to/ca-bundle.pem', timeout=10)",
+                "confidence": "high"
+              },
+              {
+                "file": "tls_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Potential Server Side Request Forgery (SSRF)",
+                "explanation": "The function fetches an arbitrary URL supplied by the caller without any validation or restriction, allowing an attacker to cause the server to make unintended HTTP requests to internal services or external malicious hosts.",
+                "fix": "Validate the supplied URL against an allow\u2011list of trusted domains or schemes before making the request, and reject or sanitize any disallowed URLs.",
+                "fix_code": "from urllib.parse import urlparse\n\ndef fetch_catalog(url):\n    parsed = urlparse(url)\n    if parsed.scheme not in ('https',):\n        raise ValueError('Only HTTPS URLs are allowed')\n    if not parsed.netloc.endswith('trusted.example.com'):\n        raise ValueError('URL not allowed')\n    response = requests.get(url, timeout=10)\n    response.raise_for_status()\n    return response.json()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "tls_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-295",
+                "title": "Disabled SSL/TLS certificate verification",
+                "explanation": "The code calls requests.get with verify=False, which disables TLS certificate validation. An attacker performing a man\u2011in\u2011the\u2011middle attack can present a fraudulent certificate and intercept or modify the data returned by the request, leading to data theft or injection.",
+                "fix": "Remove the verify=False argument so that the default certificate verification is performed, or explicitly provide a trusted CA bundle if custom verification is required.",
+                "fix_code": "response = requests.get(url, timeout=10)  # verify defaults to True",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "debug_01",
+      "vulnerable": true,
+      "category": "debug_mode_enabled",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "debug_01.py",
+                "line": 10,
+                "severity": "high",
+                "cwe": "CWE-200",
+                "title": "Debug mode enabled in production",
+                "explanation": "Running Flask with debug=True and binding to 0.0.0.0 exposes the interactive debugger and detailed error information to any network attacker, potentially allowing remote code execution or information disclosure.",
+                "fix": "Disable debug mode and bind the server to a safe interface (e.g., localhost) in production, or control these settings via environment variables.",
+                "fix_code": "if __name__ == '__main__':\n    # Use environment variables or configuration to control debug and host\n    debug_mode = os.getenv('FLASK_DEBUG', '0') == '1'\n    host = os.getenv('FLASK_HOST', '127.0.0.1')\n    app.run(host=host, debug=debug_mode)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "debug_01.py",
+                "line": 10,
+                "severity": "high",
+                "cwe": "CWE-215",
+                "title": "Debug mode enabled in production",
+                "explanation": "Running the Flask app with debug=True on host 0.0.0.0 exposes the Werkzeug interactive debugger to any network client, allowing remote code execution and information leakage.",
+                "fix": "Disable debug mode in production and bind the server to localhost or a specific trusted interface. Use configuration or environment variables to control the debug flag.",
+                "fix_code": "if __name__ == '__main__':\n    app.run(host='127.0.0.1', debug=False)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "debug_01.py",
+                "line": 10,
+                "severity": "high",
+                "cwe": "CWE-749",
+                "title": "Exposed Debug Interface",
+                "explanation": "Running Flask with debug=True on a public interface (host='0.0.0.0') exposes the Werkzeug debugger, which can allow remote code execution if an attacker triggers an exception.",
+                "fix": "Disable debug mode in production and bind the server to localhost or use a production-grade WSGI server. Set debug=False and host='127.0.0.1' or configure via environment variables.",
+                "fix_code": "if __name__ == '__main__':\n    app.run(host='127.0.0.1', debug=False)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "random_01",
+      "vulnerable": true,
+      "category": "insecure_randomness",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "random_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-338",
+                "title": "Weak random number generator used for reset token",
+                "explanation": "The code uses random.choice from the non\u2011cryptographic random module to generate password reset codes. This PRNG is predictable, allowing an attacker to guess or brute\u2011force valid reset tokens and hijack user accounts.",
+                "fix": "Replace the use of the random module with the secrets module, which provides cryptographically strong randomness suitable for security\u2011sensitive tokens.",
+                "fix_code": "import secrets\n\ndef issue_reset_code():\n    alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'\n    return ''.join(secrets.choice(alphabet) for _ in range(24))\n",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "random_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-338",
+                "title": "Insecure token generation using non\u2011cryptographic RNG",
+                "explanation": "The reset code is generated with random.choice from the 'random' module, which uses a deterministic PRNG (Mersenne Twister). This makes the 24\u2011character reset token predictable and vulnerable to brute\u2011force or pre\u2011computation attacks, allowing an attacker to guess valid password\u2011reset links.",
+                "fix": "Replace the use of the 'random' module with the cryptographically secure 'secrets' module when generating reset tokens, e.g., use secrets.choice or secrets.token_urlsafe to produce an unpredictable token.",
+                "fix_code": "import secrets\n\ndef issue_reset_code():\n    alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'\n    return ''.join(secrets.choice(alphabet) for _ in range(24))\n",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "random_01.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-338",
+                "title": "Insecure token generation using non\u2011cryptographic PRNG",
+                "explanation": "The reset code is generated with random.choice from the 'random' module, which uses a deterministic PRNG (Mersenne Twister). An attacker who can observe a few tokens or knows the seed can predict future reset codes, allowing account takeover via password\u2011reset links.",
+                "fix": "Replace the use of the 'random' module with the cryptographically secure 'secrets' module when generating reset codes, or use a built\u2011in secure token generator such as secrets.token_urlsafe.",
+                "fix_code": "import secrets\n\ndef issue_reset_code():\n    alphabet = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'\n    return ''.join(secrets.choice(alphabet) for _ in range(24))\n\ndef reset_link(user):\n    return save_reset_code(user.id, issue_reset_code())\n",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "random_02",
+      "vulnerable": true,
+      "category": "insecure_randomness",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "random_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-338",
+                "title": "Weak session token generation",
+                "explanation": "The code uses the non\u2011cryptographic random module to generate session tokens, making them predictable and allowing attackers to guess valid tokens and hijack sessions.",
+                "fix": "Replace the use of random.getrandbits with a cryptographically secure generator such as the secrets module, and generate a token of sufficient entropy (e.g., secrets.token_urlsafe).",
+                "fix_code": "import secrets\n\ndef new_session_token():\n    # Generate a URL\u2011safe token with at least 128 bits of entropy\n    token = secrets.token_urlsafe(16)\n    sessions.store(token)\n    return token",
+                "confidence": "high"
+              },
+              {
+                "file": "random_02.py",
+                "line": 10,
+                "severity": "high",
+                "cwe": "CWE-287",
+                "title": "Authentication bypass in login function",
+                "explanation": "The login function returns a new session token without verifying the supplied user's credentials, allowing any caller to obtain a valid session token and gain unauthorized access.",
+                "fix": "Add proper credential verification (e.g., password check) before issuing a session token, and only create a token for authenticated users.",
+                "fix_code": "def login(user, password):\n    if not authenticate(user, password):\n        raise PermissionError('Invalid credentials')\n    return new_session_token()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "random_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-338",
+                "title": "Insecure session token generation",
+                "explanation": "The code uses the non\u2011cryptographic random module (random.getrandbits) to create session tokens. This PRNG is predictable, allowing an attacker to guess or brute\u2011force valid tokens and hijack user sessions.",
+                "fix": "Replace the use of the random module with the cryptographically secure secrets module when generating session tokens, or use a built\u2011in token generator such as secrets.token_urlsafe.",
+                "fix_code": "import secrets\n\ndef new_session_token():\n    # Generate a cryptographically strong random token (e.g., 128 bits encoded as URL\u2011safe base64)\n    token = secrets.token_urlsafe(16)\n    sessions.store(token)\n    return token",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "random_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-338",
+                "title": "Predictable session token generation",
+                "explanation": "The code uses the non\u2011cryptographic random module to generate session tokens, which produces predictable values that an attacker can guess or brute\u2011force, leading to session hijacking.",
+                "fix": "Replace the use of random.getrandbits with a cryptographically secure generator from the secrets module (e.g., secrets.randbits or secrets.token_urlsafe) when creating session tokens.",
+                "fix_code": "import secrets\n\ndef new_session_token():\n    # Generate 128 bits of entropy and encode as URL\u2011safe string\n    token = secrets.token_urlsafe(16)\n    sessions.store(token)\n    return token",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "xss_01",
+      "vulnerable": true,
+      "category": "xss",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "xss_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-79",
+                "title": "Reflected Cross-Site Scripting (XSS)",
+                "explanation": "User-controlled 'name' parameter is concatenated directly into HTML response without escaping, allowing an attacker to inject malicious script that will be executed in the victim's browser.",
+                "fix": "Escape the user-supplied 'name' before inserting it into the HTML, or use Flask's templating engine which auto\u2011escapes variables. For example, use Markup.escape or render_template with a placeholder.",
+                "fix_code": "from flask import Response, escape\n\ndef greeting(request):\n    name = request.args.get('name', 'visitor')\n    safe_name = escape(name)\n    return Response(f'<h1>Hello {safe_name}</h1>', mimetype='text/html')\n",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "xss_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-79",
+                "title": "Reflected XSS via unsanitized user input",
+                "explanation": "The 'name' query parameter is concatenated directly into an HTML response without any escaping. An attacker can supply a crafted value such as <script>alert(1)</script> which will be executed in the victim's browser, leading to session hijacking, credential theft, or other malicious actions.",
+                "fix": "Escape the user-supplied 'name' before inserting it into the HTML, or use Flask's templating engine which auto\u2011escapes variables. For example, render the response with render_template_string and the |e filter, or explicitly escape the string with Markup.escape.",
+                "fix_code": "from flask import Response, escape\n\ndef greeting(request):\n    name = request.args.get('name', 'visitor')\n    safe_name = escape(name)\n    return Response(f'<h1>Hello {safe_name}</h1>', mimetype='text/html')",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "xss_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-79",
+                "title": "Reflected XSS via unsanitized user input",
+                "explanation": "The 'name' query parameter is concatenated directly into an HTML response without escaping, allowing an attacker to inject arbitrary JavaScript that will be executed in the victim's browser.",
+                "fix": "Escape the user-supplied value before inserting it into the HTML or use Flask's template rendering which auto\u2011escapes. For example, use Markup.escape or render_template.",
+                "fix_code": "def greeting(request):\n    from flask import escape, Response\n    name = request.args.get('name', 'visitor')\n    safe_name = escape(name)\n    return Response(f'<h1>Hello {safe_name}</h1>', mimetype='text/html')",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "xss_02",
+      "vulnerable": true,
+      "category": "xss",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "xss_02.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-79",
+                "title": "Improper neutralization of input leading to XSS",
+                "explanation": "The function render_comment concatenates comment.body directly into HTML without escaping, allowing an attacker to inject malicious scripts that will be executed in the victim's browser when the page is rendered.",
+                "fix": "Escape or sanitize comment.body before inserting it into the HTML, or use a safe templating engine that automatically handles escaping.",
+                "fix_code": "import html\n\ndef render_comment(comment):\n    html_output = \"<section class='comment'>\"\n    escaped_body = html.escape(comment.body)\n    html_output += f'<p>{escaped_body}</p>'\n    html_output += '</section>'\n    return html_output",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "xss_02.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-79",
+                "title": "Unescaped user input leads to XSS",
+                "explanation": "The comment.body value is concatenated directly into HTML without escaping, allowing an attacker to inject malicious scripts that will execute in the victim's browser when the page is rendered.",
+                "fix": "Escape the comment body before inserting it into the HTML, or use a safe templating engine that automatically handles escaping.",
+                "fix_code": "import html\n\ndef render_comment(comment):\n    html_content = \"<section class='comment'>\"\n    safe_body = html.escape(comment.body)\n    html_content += f\"<p>{safe_body}</p>\"\n    html_content += \"</section>\"\n    return html_content\n\ndef comments_page(comments):\n    return ''.join(render_comment(item) for item in comments)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "xss_02.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-79",
+                "title": "Unsanitized comment body leads to XSS",
+                "explanation": "The function render_comment concatenates comment.body directly into HTML without escaping. An attacker can supply a comment containing malicious JavaScript (e.g., <script>alert(1)</script>) which will be rendered and executed in the victim's browser, enabling stored cross\u2011site scripting attacks.",
+                "fix": "Escape the comment body before inserting it into the HTML, or use a safe templating engine that automatically handles escaping.",
+                "fix_code": "import html\n\ndef render_comment(comment):\n    html_output = \"<section class='comment'>\"\n    # Escape user\u2011controlled content to prevent XSS\n    safe_body = html.escape(comment.body)\n    html_output += f'<p>{safe_body}</p>'\n    html_output += '</section>'\n    return html_output\n\ndef comments_page(comments):\n    return ''.join(render_comment(item) for item in comments)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "ssrf_01",
+      "vulnerable": true,
+      "category": "ssrf",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "ssrf_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Server-Side Request Forgery (SSRF) via unvalidated URL",
+                "explanation": "The function uses a user\u2011controlled query parameter directly as the target of requests.get(). An attacker can supply any URL (including internal IPs, localhost, or file:// schemes) causing the server to make arbitrary HTTP requests, potentially exposing internal services, credentials, or enabling further attacks.",
+                "fix": "Validate and restrict the supplied URL before making the request. Only allow URLs with approved schemes (e.g., https) and hostnames that are on an explicit whitelist, and reject or sanitize any others. Consider using a safe HTTP client that enforces these restrictions.",
+                "fix_code": "import urllib.parse\n\nALLOWED_HOSTS = {'example.com', 'api.trusted.com'}\n\ndef is_allowed_url(url):\n    try:\n        parsed = urllib.parse.urlparse(url)\n        if parsed.scheme not in ('http', 'https'):\n            return False\n        host = parsed.hostname\n        return host in ALLOWED_HOSTS\n    except Exception:\n        return False\n\ndef preview_url(request):\n    target = request.args.get('url')\n    if not target or not is_allowed_url(target):\n        raise ValueError('Invalid URL')\n    response = requests.get(target, timeout=5)\n    response.raise_for_status()\n    return response.text[:2000]",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "ssrf_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Server Side Request Forgery (SSRF) via unvalidated URL",
+                "explanation": "The function directly passes a user\u2011controlled URL from request.args['url'] to requests.get(). An attacker can supply internal addresses (e.g., 127.0.0.1, 169.254.169.254) or other services behind the firewall, causing the server to make arbitrary HTTP requests and potentially expose sensitive data or perform unintended actions.",
+                "fix": "Validate the supplied URL before making the request. Restrict allowed schemes to http/https, enforce a whitelist of domains, and block private IP ranges. Consider using a safe HTTP client that prevents redirects to disallowed hosts.",
+                "fix_code": "import urllib.parse\nimport ipaddress\nimport requests\n\nALLOWED_DOMAINS = {'example.com', 'api.example.org'}\n\ndef is_private_ip(host):\n    try:\n        ip = ipaddress.ip_address(host)\n        return ip.is_private\n    except ValueError:\n        return False\n\ndef is_allowed_url(url):\n    parsed = urllib.parse.urlparse(url)\n    if parsed.scheme not in ('http', 'https'):\n        return False\n    host = parsed.hostname\n    if not host:\n        return False\n    if is_private_ip(host):\n        return False\n    # Check against whitelist\n    if host not in ALLOWED_DOMAINS:\n        return False\n    return True\n\ndef preview_url(request):\n    target = request.args.get('url')\n    if not target or not is_allowed_url(target):\n        raise ValueError('Invalid URL')\n    response = requests.get(target, timeout=5, allow_redirects=False)\n    response.raise_for_status()\n    return response.text[:2000]",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "ssrf_01.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Server-Side Request Forgery (SSRF) via unvalidated URL parameter",
+                "explanation": "The function directly uses a user\u2011controlled 'url' query parameter as the target of requests.get(). An attacker can supply internal network addresses (e.g., 127.0.0.1, 169.254.169.254) or other services reachable from the server, causing the server to make arbitrary HTTP requests and potentially expose sensitive data or perform unintended actions.",
+                "fix": "Validate the supplied URL against an allowlist of trusted domains or IP ranges, enforce allowed schemes (http/https), and reject or sanitize any URLs that point to internal resources before making the request.",
+                "fix_code": "import re\nfrom urllib.parse import urlparse\n\nALLOWED_DOMAINS = {'example.com', 'api.example.org'}\n\ndef is_allowed_url(url):\n    try:\n        parsed = urlparse(url)\n        if parsed.scheme not in {'http', 'https'}:\n            return False\n        host = parsed.hostname\n        if not host:\n            return False\n        # Simple domain whitelist check\n        return any(host.endswith(domain) for domain in ALLOWED_DOMAINS)\n    except Exception:\n        return False\n\ndef preview_url(request):\n    target = request.args.get('url')\n    if not target or not is_allowed_url(target):\n        raise ValueError('Invalid or disallowed URL')\n    response = requests.get(target, timeout=5)\n    response.raise_for_status()\n    return response.text[:2000]",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "ssrf_02",
+      "vulnerable": true,
+      "category": "ssrf",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "ssrf_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Server-Side Request Forgery (SSRF) via unvalidated avatar_url",
+                "explanation": "The function accepts a user\u2011controlled 'avatar_url' and directly passes it to requests.get without any validation or allow\u2011list. An attacker can supply an internal URL (e.g., http://169.254.169.254/) to make the server perform arbitrary HTTP requests to internal services, exposing sensitive data or performing unintended actions.",
+                "fix": "Validate the supplied URL against an allow\u2011list of trusted domains and schemes before making the request, and consider using a safe HTTP client that enforces network egress controls. Reject or sanitize URLs that point to internal IP ranges or use disallowed protocols.",
+                "fix_code": "import urllib.parse\nimport requests\n\nTRUSTED_DOMAINS = {'example.com', 'cdn.example.org'}\n\ndef is_trusted_url(url):\n    try:\n        parsed = urllib.parse.urlparse(url)\n        if parsed.scheme not in {'http', 'https'}:\n            return False\n        host = parsed.hostname\n        if host is None:\n            return False\n        # Simple domain allow\u2011list check (could be expanded with subdomain handling)\n        return any(host == d or host.endswith('.' + d) for d in TRUSTED_DOMAINS)\n    except Exception:\n        return False\n\ndef download_avatar(profile):\n    avatar_url = profile.get('avatar_url')\n    if not avatar_url or not is_trusted_url(avatar_url):\n        raise ValueError('Untrusted avatar URL')\n    response = requests.get(avatar_url, timeout=8)\n    response.raise_for_status()\n    image = response.content\n    with open('/tmp/avatar.png', 'wb') as output:\n        output.write(image)\n    return '/tmp/avatar.png'",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "ssrf_02.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Server-Side Request Forgery (SSRF) via avatar_url",
+                "explanation": "The function fetches a URL supplied in the untrusted 'profile' dictionary without any validation, allowing an attacker to supply internal or malicious URLs. This can be used to access internal services, metadata endpoints, or perform port scanning from the server.",
+                "fix": "Validate the avatar_url before making the request. Restrict the scheme to http/https and enforce an allow\u2011list of trusted domains or IP ranges. Reject or sanitize any URL that does not match the whitelist.",
+                "fix_code": "import urllib.parse\n\nTRUSTED_DOMAINS = {'example.com', 'cdn.example.org'}\n\ndef is_trusted(url):\n    try:\n        parsed = urllib.parse.urlparse(url)\n        if parsed.scheme not in ('http', 'https'):\n            return False\n        host = parsed.hostname\n        return host in TRUSTED_DOMAINS\n    except Exception:\n        return False\n\ndef download_avatar(profile):\n    avatar_url = profile.get('avatar_url')\n    if not avatar_url or not is_trusted(avatar_url):\n        raise ValueError('Untrusted avatar URL')\n    image = requests.get(avatar_url, timeout=8).content\n    with open('/tmp/avatar.png', 'wb') as output:\n        output.write(image)\n    return '/tmp/avatar.png'",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "ssrf_02.py",
+                "line": 5,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Server Side Request Forgery (SSRF) via unvalidated avatar URL",
+                "explanation": "The function downloads whatever URL is supplied in the 'avatar_url' field without any validation, allowing an attacker to force the server to make arbitrary HTTP requests to internal services, cloud metadata endpoints, or other protected resources, potentially leading to data exfiltration or further attacks.",
+                "fix": "Validate the avatar URL before fetching it. Restrict the scheme to http/https, enforce a whitelist of allowed domains, and consider using a safe HTTP client that blocks internal IP ranges. Also handle errors and avoid writing to a predictable file path.",
+                "fix_code": "import urllib.parse\nimport ipaddress\nimport requests\n\nALLOWED_DOMAINS = {'example.com', 'cdn.example.org'}\n\n\ndef is_safe_url(url):\n    try:\n        parsed = urllib.parse.urlparse(url)\n        if parsed.scheme not in ('http', 'https'):\n            return False\n        hostname = parsed.hostname\n        if not hostname:\n            return False\n        # Reject IP literals and private networks\n        try:\n            ip = ipaddress.ip_address(hostname)\n            if ip.is_private:\n                return False\n        except ValueError:\n            # hostname is not an IP, continue\n            pass\n        # Enforce domain whitelist\n        if hostname not in ALLOWED_DOMAINS:\n            return False\n        return True\n    except Exception:\n        return False\n\ndef download_avatar(profile):\n    avatar_url = profile.get('avatar_url')\n    if not avatar_url or not is_safe_url(avatar_url):\n        raise ValueError('Invalid avatar URL')\n    response = requests.get(avatar_url, timeout=8)\n    response.raise_for_status()\n    image = response.content\n    with open('/tmp/avatar.png', 'wb') as output:\n        output.write(image)\n    return '/tmp/avatar.png'",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "secret_03",
+      "vulnerable": true,
+      "category": "hardcoded_secret",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "secret_03.py",
+                "line": 2,
+                "severity": "high",
+                "cwe": "CWE-259",
+                "title": "Hard-coded SMTP password",
+                "explanation": "The SMTP password is stored directly in the source code, allowing an attacker who gains read access to the repository or deployed files to obtain valid credentials and send unauthorized emails through the internal mail server.",
+                "fix": "Remove the hard-coded password and load it securely at runtime, for example from an environment variable, a secrets manager, or a protected configuration file.",
+                "fix_code": "import os\n\nclass Mailer:\n    def __init__(self):\n        self.smtp_password = os.getenv('SMTP_PASSWORD')\n        if not self.smtp_password:\n            raise RuntimeError('SMTP_PASSWORD not set')\n\n    def send(self, recipient, message):\n        client = SMTPClient('mail.internal')\n        client.login('notifier', self.smtp_password)\n        return client.send(recipient, message)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "secret_03.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-259",
+                "title": "Hard-coded SMTP password",
+                "explanation": "The SMTP password is embedded directly in the source code, allowing anyone with access to the code repository or deployed binaries to retrieve the credential and potentially send unauthorized emails or gain access to the mail server.",
+                "fix": "Remove the hard-coded password and load it securely at runtime, for example from an environment variable, a secrets manager, or an encrypted configuration file.",
+                "fix_code": "import os\n\nclass Mailer:\n    def __init__(self):\n        self.smtp_password = os.getenv('SMTP_PASSWORD')\n        if not self.smtp_password:\n            raise RuntimeError('SMTP_PASSWORD not set')\n\n    def send(self, recipient, message):\n        client = SMTPClient('mail.internal')\n        client.login('notifier', self.smtp_password)\n        return client.send(recipient, message)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "secret_03.py",
+                "line": 2,
+                "severity": "high",
+                "cwe": "CWE-259",
+                "title": "Hard-coded SMTP password",
+                "explanation": "The SMTP password is embedded directly in the source code, allowing an attacker who gains read access to the repository to obtain valid credentials and send unauthorized emails through the internal mail server.",
+                "fix": "Remove the hard-coded password and load it securely at runtime (e.g., from an environment variable, secret manager, or encrypted configuration).",
+                "fix_code": "import os\n\nclass Mailer:\n    def __init__(self):\n        self.smtp_password = os.getenv('SMTP_PASSWORD')\n        if not self.smtp_password:\n            raise RuntimeError('SMTP_PASSWORD not set')\n\n    def send(self, recipient, message):\n        client = SMTPClient('mail.internal')\n        client.login('notifier', self.smtp_password)\n        return client.send(recipient, message)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "xss_03",
+      "vulnerable": true,
+      "category": "xss",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "xss_03.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-79",
+                "title": "Improper output encoding leads to XSS",
+                "explanation": "User\u2011controlled fields (display_name and bio) are interpolated directly into an HTML string without escaping. An attacker can supply a profile containing malicious markup (e.g., <script>...</script>) which will be rendered by the browser, enabling stored or reflected cross\u2011site scripting attacks.",
+                "fix": "Escape HTML special characters before inserting them into the response, or use a templating engine that automatically performs context\u2011appropriate escaping.",
+                "fix_code": "import html\n\ndef profile_card(profile):\n    name = html.escape(profile.get('display_name', ''))\n    bio = html.escape(profile.get('bio', ''))\n    return f\"<article><b>{name}</b><p>{bio}</p></article>\"\n",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "xss_03.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-79",
+                "title": "Cross-site scripting (XSS) via unsanitized user input",
+                "explanation": "The function `profile_card` interpolates `name` and `bio` directly into an HTML string using an f\u2011string. If either field contains malicious JavaScript, it will be rendered unchanged in the response, allowing an attacker to execute arbitrary scripts in the victim's browser.",
+                "fix": "Escape or sanitize the user\u2011controlled values before embedding them in HTML, or use a templating engine that automatically escapes output.",
+                "fix_code": "import html\n\ndef profile_card(profile):\n    name = html.escape(profile.get('display_name', ''))\n    bio = html.escape(profile.get('bio', ''))\n    return f\"<article><b>{name}</b><p>{bio}</p></article>\"\n",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "xss_03.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-79",
+                "title": "Improper output encoding leading to XSS",
+                "explanation": "User-controlled fields 'display_name' and 'bio' are interpolated directly into an HTML string without any escaping. An attacker can supply a profile containing malicious JavaScript, which will be rendered and executed in the victim's browser when the response is displayed, resulting in a cross\u2011site scripting (XSS) vulnerability.",
+                "fix": "Escape or sanitize the name and bio values before inserting them into the HTML, or use a templating engine that automatically HTML\u2011escapes variables. For example, apply html.escape to each value or render the template with a safe library.",
+                "fix_code": "import html\n\ndef profile_card(profile):\n    name = html.escape(profile.get('display_name', ''))\n    bio = html.escape(profile.get('bio', ''))\n    return f\"<article><b>{name}</b><p>{bio}</p></article>\"\n",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_sqli_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_sqli_02",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_sqli_02.py",
+                "line": 7,
+                "severity": "high",
+                "cwe": "CWE-284",
+                "title": "Missing authorization check for order retrieval",
+                "explanation": "The route function directly returns order data based on a user\u2011supplied id without verifying that the requester is allowed to view that order. An attacker can supply arbitrary ids (e.g., sequential numbers) to enumerate and retrieve any order record, leading to unauthorized data exposure.",
+                "fix": "Validate that the authenticated user has permission to access the requested order before executing the query. Retrieve the user\u2019s identity from the request/session, compare it against the order\u2019s owner, and return an error if the check fails.",
+                "fix_code": "def route(request, cursor):\n    user_id = request.session.get('user_id')  # or however the app stores the authenticated user\n    order_id = request.args.get('id')\n    # Verify ownership or appropriate permission\n    cursor.execute('SELECT user_id FROM orders WHERE id = %s', (order_id,))\n    owner = cursor.fetchone()\n    if not owner or owner['user_id'] != user_id:\n        raise PermissionError('Unauthorized access')\n    return find_order(cursor, order_id)",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_sqli_02.py",
+                "line": 7,
+                "severity": "high",
+                "cwe": "CWE-639",
+                "title": "Missing authorization check (IDOR)",
+                "explanation": "The route function directly uses a user\u2011controlled request argument to fetch an order without verifying that the requester is authorized to view that order, allowing an attacker to retrieve arbitrary orders by guessing IDs (Insecure Direct Object Reference).",
+                "fix": "Add proper access\u2011control logic before returning the order, e.g., verify the authenticated user's permissions or ownership of the requested order and reject unauthorized requests.",
+                "fix_code": "def route(request, cursor, current_user):\n    order_id = request.args.get('id')\n    # Verify the user is allowed to access this order\n    if not user_can_view_order(current_user, order_id):\n        raise PermissionError('Unauthorized access')\n    return find_order(cursor, order_id)\n\ndef user_can_view_order(user, order_id):\n    # Example check: ensure the order belongs to the user\n    sql = 'SELECT 1 FROM orders WHERE id = %s AND user_id = %s'\n    cursor.execute(sql, (order_id, user.id))\n    return cursor.fetchone() is not None",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_secret_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_exec_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_cmd_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_cmd_01.py",
+                "line": 6,
+                "severity": "high",
+                "cwe": "CWE-59",
+                "title": "Improper link resolution before file access",
+                "explanation": "The function builds a file path by concatenating a trusted directory with a whitelisted filename and then passes it to an external command. If an attacker can create a symbolic link named 'daily' or 'weekly' inside /srv/reports pointing to an arbitrary file, the subprocess will read that file, allowing unauthorized disclosure of its contents.",
+                "fix": "Validate the resolved file path before accessing it, ensuring it resides within the intended directory, and read the file directly with Python's file I/O instead of invoking an external command.",
+                "fix_code": "import os\n\ndef show_report(report_name):\n    if report_name not in {'daily', 'weekly'}:\n        raise ValueError('unknown report')\n    base_dir = '/srv/reports'\n    # Build the absolute path and resolve any symlinks\n    file_path = os.path.realpath(os.path.join(base_dir, report_name))\n    # Ensure the resolved path is still within the base directory\n    if not file_path.startswith(os.path.realpath(base_dir) + os.sep):\n        raise ValueError('invalid report path')\n    with open(file_path, 'r', encoding='utf-8') as f:\n        return f.read()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_token_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_crypto_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_xss_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_path_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_yaml_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_yaml_01.py",
+                "line": 4,
+                "severity": "medium",
+                "cwe": "CWE-400",
+                "title": "Potential DoS via yaml.safe_load on untrusted input",
+                "explanation": "yaml.safe_load will parse the entire YAML document, which can be crafted as a YAML bomb (e.g., using recursive anchors) to consume excessive CPU and memory, leading to denial\u2011of\u2011service.",
+                "fix": "Validate or limit the size and complexity of the YAML input before parsing, or switch to a parser that enforces a maximum depth/size for untrusted data.",
+                "fix_code": "def read_preferences(stream):\n    # Limit input size (e.g., 1\u202fKB) to mitigate YAML bomb attacks\n    max_bytes = 1024\n    data = stream.read(max_bytes + 1)\n    if len(data) > max_bytes:\n        raise ValueError('Preferences input too large')\n    options = yaml.safe_load(data) or {}\n    if not isinstance(options, dict):\n        raise ValueError('preferences must be a mapping')\n    return options.get('display', {})",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_yaml_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-400",
+                "title": "Uncontrolled Resource Consumption via yaml.safe_load",
+                "explanation": "yaml.safe_load will fully parse any YAML document, including malicious payloads that exploit alias recursion (Billion Laughs) or extremely large structures, leading to excessive CPU and memory usage and potentially crashing the application.",
+                "fix": "Validate the size and complexity of the incoming YAML before parsing, or switch to a parser that enforces limits on recursion depth and total node count. For example, reject inputs larger than a safe threshold and use a safe loader that disables aliases.",
+                "fix_code": "def read_preferences(stream):\n    # Limit input size (e.g., 10KB) to mitigate resource exhaustion\n    max_size = 10 * 1024\n    data = stream.read(max_size + 1)\n    if len(data) > max_size:\n        raise ValueError('YAML input too large')\n    # Use a loader that disables aliases to prevent Billion Laughs attacks\n    class NoAliasLoader(yaml.SafeLoader):\n        def construct_mapping(self, node, deep=False):\n            if node.tag == 'tag:yaml.org,2002:merge':\n                raise yaml.YAMLError('Merge keys are not allowed')\n            return super().construct_mapping(node, deep)\n    options = yaml.load(data, Loader=NoAliasLoader) or {}\n    if not isinstance(options, dict):\n        raise ValueError('preferences must be a mapping')\n    return options.get('display', {})",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_yaml_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-400",
+                "title": "Uncontrolled Resource Consumption via yaml.safe_load",
+                "explanation": "yaml.safe_load parses the entire YAML document without limits. An attacker can supply a malicious YAML payload (e.g., with many nested aliases or the \"billion laughs\" attack) that consumes excessive CPU and memory, leading to a denial\u2011of\u2011service.",
+                "fix": "Validate and limit the size and complexity of the YAML input before parsing, and configure the loader to reject recursive aliases or deep nesting.",
+                "fix_code": "def read_preferences(stream):\n    # Limit input size (e.g., 1\u202fKB) to prevent huge payloads\n    data = stream.read(1024)\n    if stream.read(1):\n        raise ValueError('YAML input too large')\n    # Use a SafeLoader with alias expansion disabled (PyYAML >=5.1)\n    class NoAliasSafeLoader(yaml.SafeLoader):\n        def construct_yaml_alias(self, node):\n            raise yaml.YAMLError('YAML aliases are not allowed')\n    options = yaml.load(data, Loader=NoAliasSafeLoader) or {}\n    if not isinstance(options, dict):\n        raise ValueError('preferences must be a mapping')\n    return options.get('display', {})",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_tls_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_tls_01.py",
+                "line": 3,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Potential Server-Side Request Forgery (SSRF)",
+                "explanation": "The fetch_catalog function accepts an arbitrary URL and directly performs a requests.get call, allowing an attacker who can influence the URL argument to make the server issue HTTP requests to internal services or external resources, leading to SSRF attacks.",
+                "fix": "Validate the supplied URL against a whitelist of allowed hosts (or at least enforce the HTTPS scheme and a specific domain) before performing the request, and reject or sanitize any disallowed URLs.",
+                "fix_code": "import urllib.parse\n\nALLOWED_HOSTS = {'catalog.example.test'}\n\ndef fetch_catalog(url):\n    parsed = urllib.parse.urlparse(url)\n    if parsed.scheme != 'https' or parsed.hostname not in ALLOWED_HOSTS:\n        raise ValueError('Disallowed URL')\n    response = requests.get(url, timeout=10)\n    response.raise_for_status()\n    return response.json()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_tls_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Potential Server Side Request Forgery (SSRF)",
+                "explanation": "The fetch_catalog function accepts an arbitrary URL parameter and forwards it directly to requests.get without any validation or allow\u2011list. An attacker who can influence the URL argument could cause the server to make HTTP requests to internal services, metadata endpoints, or other protected resources, leading to information disclosure or further exploitation.",
+                "fix": "Validate the supplied URL against a whitelist of allowed domains or paths before making the request, and reject or sanitize any URLs that do not match the allowed list. Optionally, use a dedicated HTTP client with restricted network access for internal calls.",
+                "fix_code": "import re\nfrom urllib.parse import urlparse\n\nALLOWED_HOSTS = {'catalog.example.test'}\n\ndef is_allowed_url(url):\n    try:\n        parsed = urlparse(url)\n        return parsed.scheme in {'http', 'https'} and parsed.hostname in ALLOWED_HOSTS\n    except Exception:\n        return False\n\ndef fetch_catalog(url):\n    if not is_allowed_url(url):\n        raise ValueError('Disallowed URL')\n    response = requests.get(url, timeout=10)\n    response.raise_for_status()\n    return response.json()",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_tls_01.py",
+                "line": 4,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Potential Server-Side Request Forgery (SSRF)",
+                "explanation": "The function fetch_catalog accepts an arbitrary URL and forwards it directly to requests.get without any validation or restriction. If an attacker can influence the URL argument, they can cause the server to make unintended HTTP requests to internal services, metadata endpoints, or external malicious sites, leading to data exfiltration or internal network scanning.",
+                "fix": "Validate the supplied URL against an allow\u2011list of trusted domains or use a URL parsing library to ensure only approved hosts are reachable. Reject or sanitize any URLs that do not match the expected pattern before making the request.",
+                "fix_code": "import re\nfrom urllib.parse import urlparse\n\nALLOWED_HOSTS = {'catalog.example.test'}\n\ndef fetch_catalog(url):\n    parsed = urlparse(url)\n    if parsed.scheme != 'https' or parsed.hostname not in ALLOWED_HOSTS:\n        raise ValueError('Disallowed URL')\n    response = requests.get(url, timeout=10)\n    response.raise_for_status()\n    return response.json()",
+                "confidence": "medium"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_debug_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_random_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_random_01.py",
+                "line": 6,
+                "severity": "high",
+                "cwe": "CWE-287",
+                "title": "Missing authentication before session creation",
+                "explanation": "The login function creates a session token and returns a session for any supplied user identifier without verifying credentials, allowing attackers to obtain valid sessions for arbitrary accounts.",
+                "fix": "Add proper credential verification (e.g., password check) before calling create_session and generating a token, and only create a session on successful authentication.",
+                "fix_code": "def login(user, password):\n    if not authenticate(user, password):\n        raise PermissionError('Invalid credentials')\n    token = new_session_token()\n    return create_session(user, token)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_random_01.py",
+                "line": 8,
+                "severity": "high",
+                "cwe": "CWE-287",
+                "title": "Missing authentication check in login function",
+                "explanation": "The login function creates a session for any supplied user identifier without verifying credentials, allowing an attacker to obtain a valid session token for arbitrary accounts and impersonate them.",
+                "fix": "Add proper credential verification (e.g., password check) before creating a session token, and only generate a token after successful authentication.",
+                "fix_code": "def login(user, password):\n    if not authenticate(user, password):\n        raise PermissionError('Invalid credentials')\n    token = new_session_token()\n    return create_session(user, token)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_random_01.py",
+                "line": 8,
+                "severity": "high",
+                "cwe": "CWE-287",
+                "title": "Missing authentication check in login function",
+                "explanation": "The login function creates a session for any supplied user identifier without verifying credentials, allowing an attacker to obtain a valid session token for arbitrary accounts and bypass authentication.",
+                "fix": "Add proper credential verification (e.g., password check) before creating a session and ensure the session token is associated with the authenticated user.",
+                "fix_code": "def login(user, password):\n    # Verify the user's credentials\n    if not authenticate(user, password):\n        raise PermissionError('Invalid credentials')\n    # Create a new session token after successful authentication\n    token = new_session_token()\n    return create_session(user, token)",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_ssrf_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [
+              {
+                "file": "safe_ssrf_01.py",
+                "line": 7,
+                "severity": "high",
+                "cwe": "CWE-918",
+                "title": "Potential SSRF via DNS rebinding",
+                "explanation": "The code only validates the hostname string against a whitelist. An attacker who can control DNS for 'images.example.test' can point it to an internal IP address after the check, causing the server to make a request to internal resources (e.g., 127.0.0.1, metadata services). This bypasses the intended restriction and leads to server\u2011side request forgery.",
+                "fix": "Resolve the hostname to an IP address and verify that the resolved IP is within an allowed set (or matches a known safe IP). Reject the request if the IP does not match the expected address, and consider using a DNS\u2011pinning library to prevent rebinding attacks.",
+                "fix_code": "import socket\n\nALLOWED_HOST = 'images.example.test'\nALLOWED_IP = '203.0.113.10'  # expected IP for the allowed host\n\ndef fetch_avatar(url):\n    parsed = urlparse(url)\n    if parsed.scheme != 'https' or parsed.hostname != ALLOWED_HOST:\n        raise ValueError('unsupported avatar URL')\n    # Resolve hostname and verify IP\n    try:\n        resolved_ip = socket.gethostbyname(parsed.hostname)\n    except socket.gaierror:\n        raise ValueError('cannot resolve hostname')\n    if resolved_ip != ALLOWED_IP:\n        raise ValueError('hostname resolves to disallowed IP')\n    response = requests.get(url, timeout=5, allow_redirects=False)\n    response.raise_for_status()\n    return response.content",
+                "confidence": "high"
+              }
+            ],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": true,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    },
+    {
+      "id": "safe_pickle_01",
+      "vulnerable": false,
+      "category": "safe",
+      "runs": [
+        {
+          "run": 1,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 2,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        },
+        {
+          "run": 3,
+          "output": {
+            "findings": [],
+            "dropped": 0
+          },
+          "error": null,
+          "parse_error": false,
+          "positive": false,
+          "dropped": 0
+        }
+      ]
+    }
+  ]
+}

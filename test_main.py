@@ -604,3 +604,13 @@ def test_render_accepts_finding_with_defaulted_confidence():
     normalized = _validate_findings({"findings": [finding]})
     assert normalized[0]["confidence"] == "medium"
     assert "SQL injection" in render_review(normalized)
+
+
+@patch("review_ai.requests.post")
+def test_get_ai_review_uses_system_prompt_override_and_default(mock_post):
+    import review_ai
+    _mock_ai_content(mock_post, '{"findings": []}')
+    review_ai.get_ai_review("diff", system_prompt="custom review instructions")
+    review_ai.get_ai_review("diff")
+    sent_prompts = [call.kwargs["json"]["messages"][0]["content"] for call in mock_post.call_args_list]
+    assert sent_prompts == ["custom review instructions", review_ai.SYSTEM_PROMPT]

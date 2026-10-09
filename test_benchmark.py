@@ -139,7 +139,7 @@ def test_raised_run_error_records_available_diagnostics(monkeypatch):
 
 def test_system_prompt_has_generic_guardrails_and_no_dataset_ids():
     from benchmark import run_benchmark
-    prompt = run_benchmark.review_ai.SYSTEM_PROMPT.lower()
+    prompt = run_benchmark.CONSERVATIVE_PROMPT_PATH.read_text(encoding="utf-8").lower()
     required = (
         "whole exploit path is visible",
         "missing authentication, authorization, rate limiting, logging",
@@ -157,7 +157,28 @@ def test_system_prompt_has_generic_guardrails_and_no_dataset_ids():
     banned = ("dns control", "filesystem write access", "safe_load", "resource exhaustion")
     assert not any(phrase in prompt for phrase in banned)
     cases = json.loads((Path(__file__).parent / "benchmark" / "cases.json").read_text(encoding="utf-8"))
-    assert all(case["id"] not in run_benchmark.review_ai.SYSTEM_PROMPT for case in cases)
+    assert all(case["id"] not in prompt for case in cases)
+
+
+def test_conservative_prompt_file_has_frozen_sha256():
+    import hashlib
+    path = Path(__file__).parent / "benchmark" / "prompts" / "v2_conservative.txt"
+    assert hashlib.sha256(path.read_bytes()).hexdigest() == "33030b826d90a800f9582b00ee4d3fee6b7e93a0badb336f75735cee7238eadd"
+
+
+def test_production_prompt_differs_from_conservative_prompt_file():
+    from review_ai import SYSTEM_PROMPT
+    path = Path(__file__).parent / "benchmark" / "prompts" / "v2_conservative.txt"
+    assert SYSTEM_PROMPT != path.read_text(encoding="utf-8")
+
+
+def test_conservative_mode_passes_frozen_prompt_override(monkeypatch):
+    from benchmark import run_benchmark
+    captured = {}
+    monkeypatch.setattr(run_benchmark.review_ai, "get_ai_review", lambda diff, system_prompt=None: captured.update(system_prompt=system_prompt) or {"findings": []})
+    case = {"id": "override", "code": "pass\n", "category": "safe", "vulnerable": False}
+    run_benchmark._run_once(case, "conservative")
+    assert captured["system_prompt"] == run_benchmark.CONSERVATIVE_PROMPT_PATH.read_text(encoding="utf-8")
 
 
 def test_tagged_result_paths_are_distinct():
@@ -186,9 +207,10 @@ def test_run_cases_prints_case_progress_to_stderr(monkeypatch, capsys):
     assert capsys.readouterr().err == "case 1/1\n"
 
 
-def test_results_markdown_prints_mode_date_and_prompt_hash_and_hash_tracks_prompt(tmp_path, monkeypatch):
+def test_results_markdown_prints_mode_date_and_prompt_hash_and_hash_tracks_prompt(monkeypatch):
     from benchmark import run_benchmark
     from datetime import date
+    from tempfile import TemporaryDirectory
     summary = {
         "recall": 0.0,
         "false_positive_rate": 0.0,
@@ -198,18 +220,20 @@ def test_results_markdown_prints_mode_date_and_prompt_hash_and_hash_tracks_promp
         "dropped_findings": 0,
         "per_category": {},
     }
-    monkeypatch.setattr(run_benchmark.review_ai, "SYSTEM_PROMPT", "prompt alpha")
-    first_hash = run_benchmark.prompt_sha256()
-    run_benchmark.write_results("hardened", [], [], summary, output_dir=tmp_path)
-    first = (tmp_path / "RESULTS.md").read_text(encoding="utf-8")
-    assert "Prompt mode: **hardened**" in first
-    assert f"SYSTEM_PROMPT SHA-256: `{first_hash}`" in first
-    assert f"Date: {date.today().isoformat()}" in first
+    with TemporaryDirectory() as temp_dir:
+        output_dir = Path(temp_dir)
+        monkeypatch.setattr(run_benchmark.review_ai, "SYSTEM_PROMPT", "prompt alpha")
+        first_hash = run_benchmark.prompt_sha256()
+        run_benchmark.write_results("hardened", [], [], summary, output_dir=output_dir)
+        first = (output_dir / "RESULTS.md").read_text(encoding="utf-8")
+        assert "Prompt mode: **hardened**" in first
+        assert f"Prompt SHA-256: `{first_hash}`" in first
+        assert f"Date: {date.today().isoformat()}" in first
 
-    monkeypatch.setattr(run_benchmark.review_ai, "SYSTEM_PROMPT", "prompt beta")
-    second_hash = run_benchmark.prompt_sha256()
-    run_benchmark.write_results("hardened", [], [], summary, output_dir=tmp_path)
-    second = (tmp_path / "RESULTS.md").read_text(encoding="utf-8")
-    assert first_hash != second_hash
-    assert f"SYSTEM_PROMPT SHA-256: `{second_hash}`" in second
-    assert first != second
+        monkeypatch.setattr(run_benchmark.review_ai, "SYSTEM_PROMPT", "prompt beta")
+        second_hash = run_benchmark.prompt_sha256()
+        run_benchmark.write_results("hardened", [], [], summary, output_dir=output_dir)
+        second = (output_dir / "RESULTS.md").read_text(encoding="utf-8")
+        assert first_hash != second_hash
+        assert f"Prompt SHA-256: `{second_hash}`" in second
+        assert first != second

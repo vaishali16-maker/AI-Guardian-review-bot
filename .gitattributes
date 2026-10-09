@@ -1,0 +1,2 @@
+benchmark/cases.json -text
+benchmark/prompts/*.txt -text
