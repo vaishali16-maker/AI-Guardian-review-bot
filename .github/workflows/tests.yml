@@ -9,4 +9,4 @@ jobs:
         with:
           python-version: '3.13'
       - run: pip install -r requirements-dev.txt
-      - run: pytest test_main.py -v
+      - run: pytest -v

@@ -45,7 +45,7 @@ def test_get_ai_review_extracts_content(mock_post):
     }
     mock_post.return_value = fake_response
     result = get_ai_review("some diff text")
-    assert result == {"findings": []}
+    assert result == {"findings": [], "dropped": 0}
 
 
 #Test 5: retry logic actually retries on 429 
@@ -282,7 +282,8 @@ def test_ai_review_parses_valid_fenced_json_and_drops_invalid_findings(mock_post
     payload = {"findings": [_valid_finding(), _valid_finding(severity="urgent"), {"file": "bad.py"}]}
     _mock_ai_content(mock_post, "```json\n" + json.dumps(payload) + "\n```")
     result = get_ai_review("normal code")
-    assert result == {"findings": [_valid_finding()]}
+    assert result["findings"] == [_valid_finding()]
+    assert result["dropped"] == 2
 
 
 @patch("review_ai.requests.post")
@@ -436,8 +437,8 @@ def test_review_ai_validates_optional_fix_code_type_and_length():
     finding = _valid_finding()
     assert _validate_findings({"findings": [finding]})[0]["fix_code"] is None
     assert _validate_findings({"findings": [{**finding, "fix_code": "x = 1"}]})[0]["fix_code"] == "x = 1"
-    assert _validate_findings({"findings": [{**finding, "fix_code": 7}]}) == []
-    assert _validate_findings({"findings": [{**finding, "fix_code": "x" * 2001}]}) == []
+    assert _validate_findings({"findings": [{**finding, "fix_code": 7}]})[0]["fix_code"] is None
+    assert _validate_findings({"findings": [{**finding, "fix_code": "x" * 2001}]})[0]["fix_code"] == "x" * 2000
 
 
 def test_render_defangs_mentions_and_autolinks():
@@ -461,7 +462,12 @@ def test_ai_review_all_invalid_findings_returns_validation_error(mock_post):
     import json
     from review_ai import get_ai_review
     _mock_ai_content(mock_post, json.dumps({"findings": [{"file": "bad.py", "severity": "urgent"}]}))
-    assert get_ai_review("code") == {"findings": [], "error": "model findings failed validation"}
+    result = get_ai_review("code")
+    assert result["findings"] == []
+    assert result["error"] == "model findings failed validation"
+    assert result["dropped"] == 1
+    assert result["raw_model_output"]
+    assert result["drop_reasons"] == [{"field": "severity", "type": "str"}]
     assert mock_post.call_count == 1
 
 
@@ -470,7 +476,7 @@ def test_ai_review_benign_phrases_do_not_trigger_injection_finding(mock_post):
     from review_ai import get_ai_review
     _mock_ai_content(mock_post, '{"findings": []}')
     result = get_ai_review("The strings 'no issues' and 'system prompt' appear in this documentation.")
-    assert result == {"findings": []}
+    assert result == {"findings": [], "dropped": 0}
 
 
 @patch("review_ai.requests.post")
@@ -489,7 +495,7 @@ def test_review_ai_caps_retry_after_delay(mock_post, mock_sleep):
     success = MagicMock(status_code=200, headers={})
     success.json.return_value = {"choices": [{"message": {"content": '{"findings": []}'}}]}
     mock_post.side_effect = [limited, success]
-    assert get_ai_review("code") == {"findings": []}
+    assert get_ai_review("code") == {"findings": [], "dropped": 0}
     mock_sleep.assert_called_once_with(30)
 
 
@@ -515,3 +521,96 @@ def test_github_auth_caps_retry_after_delay(mock_post, mock_sleep, mock_jwt):
     mock_post.side_effect = [limited, success]
     assert get_installation_token(123) == "installation-token"
     mock_sleep.assert_called_once_with(30)
+
+
+def test_validate_findings_accepts_digit_string_line_and_normalizes_cwes():
+    from review_ai import _validate_findings
+    for cwe in (89, "89", ["not-a-cwe", "CWE-89"]):
+        result = _validate_findings({"findings": [_valid_finding(line="7", cwe=cwe)]})
+        assert result[0]["line"] == 7
+        assert result[0]["cwe"] == "CWE-89"
+
+
+def test_validate_findings_truncates_fix_code_and_nulls_wrong_type():
+    from review_ai import _validate_findings
+    long_code = _validate_findings({"findings": [_valid_finding(fix_code="x" * 2500)]})
+    assert len(long_code[0]["fix_code"]) == 2000
+    wrong_type = _validate_findings({"findings": [_valid_finding(fix_code={"secret": "private"})]})
+    assert wrong_type[0]["fix_code"] is None
+
+
+def test_validate_findings_normalizes_severity_and_defaults_missing_fix():
+    from review_ai import _validate_findings
+    finding = _valid_finding(severity=" HIGH ", confidence=" HIGH ")
+    finding.pop("fix")
+    result = _validate_findings({"findings": [finding]})
+    assert result[0]["severity"] == "high"
+    assert result[0]["confidence"] == "high"
+    assert result[0]["fix"] == "No specific fix provided."
+
+
+def test_validate_findings_drops_invalid_severity():
+    from review_ai import _validate_findings
+    assert _validate_findings({"findings": [_valid_finding(severity="urgent")]}) == []
+
+
+def test_validation_warning_logs_field_and_type_without_value(caplog):
+    from review_ai import _validate_findings
+    secret_value = "DO_NOT_LOG_THIS_TITLE"
+    finding = _valid_finding(title=secret_value, severity="urgent")
+    assert _validate_findings({"findings": [finding]}) == []
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("field=severity" in message and "type=str" in message for message in messages)
+    assert all(secret_value not in message for message in messages)
+
+
+def test_validate_findings_defaults_missing_confidence():
+    from review_ai import _validate_findings
+    finding = _valid_finding()
+    finding.pop("confidence")
+    result = _validate_findings({"findings": [finding]})
+    assert len(result) == 1
+    assert result[0]["confidence"] == "medium"
+
+
+def test_validate_findings_defaults_invalid_confidence():
+    from review_ai import _validate_findings
+    result = _validate_findings({"findings": [_valid_finding(confidence=" very high ")]})
+    assert result[0]["confidence"] == "medium"
+
+
+def test_confidence_default_warning_logs_only_field_and_type(caplog):
+    from review_ai import _validate_findings
+    private_value = "private-confidence-value"
+    _validate_findings({"findings": [_valid_finding(confidence=private_value)]})
+    messages = [record.getMessage() for record in caplog.records]
+    assert any("field=confidence" in message and "type=str" in message for message in messages)
+    assert all(private_value not in message for message in messages)
+
+
+def test_validate_findings_still_drops_missing_title_and_invalid_severity():
+    from review_ai import _validate_findings
+    missing_title = _valid_finding()
+    missing_title.pop("title")
+    assert _validate_findings({"findings": [missing_title]}) == []
+    assert _validate_findings({"findings": [_valid_finding(severity="urgent")]}) == []
+
+
+def test_render_accepts_finding_with_defaulted_confidence():
+    from render import render_review
+    from review_ai import _validate_findings
+    finding = _valid_finding()
+    finding.pop("confidence")
+    normalized = _validate_findings({"findings": [finding]})
+    assert normalized[0]["confidence"] == "medium"
+    assert "SQL injection" in render_review(normalized)
+
+
+@patch("review_ai.requests.post")
+def test_get_ai_review_uses_system_prompt_override_and_default(mock_post):
+    import review_ai
+    _mock_ai_content(mock_post, '{"findings": []}')
+    review_ai.get_ai_review("diff", system_prompt="custom review instructions")
+    review_ai.get_ai_review("diff")
+    sent_prompts = [call.kwargs["json"]["messages"][0]["content"] for call in mock_post.call_args_list]
+    assert sent_prompts == ["custom review instructions", review_ai.SYSTEM_PROMPT]
