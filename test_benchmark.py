@@ -135,3 +135,81 @@ def test_raised_run_error_records_available_diagnostics(monkeypatch):
     assert result["error"] == "RuntimeError"
     assert result["raw_model_output"] == "raw diagnostic output"
     assert result["drop_reasons"] == [{"field": "title", "type": "NoneType"}]
+
+
+def test_system_prompt_has_generic_guardrails_and_no_dataset_ids():
+    from benchmark import run_benchmark
+    prompt = run_benchmark.review_ai.SYSTEM_PROMPT.lower()
+    required = (
+        "whole exploit path is visible",
+        "missing authentication, authorization, rate limiting, logging",
+        "unless the code shows it comes from a request, file upload",
+        "standard, widely recommended mitigations",
+        "attacker capabilities or conditions that the code does not show",
+        "severity high or critical only when the flaw is exploitable",
+        "set confidence to low",
+        'return {"findings": []}',
+        "minimal and runnable",
+        "keep the same function signatures",
+        "do not invent helper functions or hardcoded domains",
+    )
+    assert all(rule in prompt for rule in required)
+    banned = ("dns control", "filesystem write access", "safe_load", "resource exhaustion")
+    assert not any(phrase in prompt for phrase in banned)
+    cases = json.loads((Path(__file__).parent / "benchmark" / "cases.json").read_text(encoding="utf-8"))
+    assert all(case["id"] not in run_benchmark.review_ai.SYSTEM_PROMPT for case in cases)
+
+
+def test_tagged_result_paths_are_distinct():
+    from benchmark.run_benchmark import result_paths
+    default_md, default_json = result_paths(Path("benchmark"))
+    tagged_md, tagged_json = result_paths(Path("benchmark"), "trial_1")
+    assert tagged_md.name == "RESULTS_trial_1.md"
+    assert tagged_json.name == "results_trial_1.json"
+    assert tagged_md != default_md and tagged_json != default_json
+
+
+def test_tag_cli_is_passed_to_result_writer(monkeypatch):
+    from benchmark import run_benchmark
+    captured = {}
+    monkeypatch.setattr(run_benchmark, "run_cases", lambda cases, prompt: [])
+    monkeypatch.setattr(run_benchmark, "write_results", lambda *args, **kwargs: captured.update(kwargs))
+    run_benchmark.main(["--limit", "0", "--tag", "smoke_run"])
+    assert captured["tag"] == "smoke_run"
+
+
+def test_run_cases_prints_case_progress_to_stderr(monkeypatch, capsys):
+    from benchmark import run_benchmark
+    monkeypatch.setattr(run_benchmark, "_run_once", lambda case, prompt: {"findings": []})
+    cases = [{"id": "safe", "vulnerable": False, "category": "safe"}]
+    run_benchmark.run_cases(cases, sleeper=lambda delay: None)
+    assert capsys.readouterr().err == "case 1/1\n"
+
+
+def test_results_markdown_prints_mode_date_and_prompt_hash_and_hash_tracks_prompt(tmp_path, monkeypatch):
+    from benchmark import run_benchmark
+    from datetime import date
+    summary = {
+        "recall": 0.0,
+        "false_positive_rate": 0.0,
+        "precision": 0.0,
+        "consistency": 0.0,
+        "parse_errors": 0,
+        "dropped_findings": 0,
+        "per_category": {},
+    }
+    monkeypatch.setattr(run_benchmark.review_ai, "SYSTEM_PROMPT", "prompt alpha")
+    first_hash = run_benchmark.prompt_sha256()
+    run_benchmark.write_results("hardened", [], [], summary, output_dir=tmp_path)
+    first = (tmp_path / "RESULTS.md").read_text(encoding="utf-8")
+    assert "Prompt mode: **hardened**" in first
+    assert f"SYSTEM_PROMPT SHA-256: `{first_hash}`" in first
+    assert f"Date: {date.today().isoformat()}" in first
+
+    monkeypatch.setattr(run_benchmark.review_ai, "SYSTEM_PROMPT", "prompt beta")
+    second_hash = run_benchmark.prompt_sha256()
+    run_benchmark.write_results("hardened", [], [], summary, output_dir=tmp_path)
+    second = (tmp_path / "RESULTS.md").read_text(encoding="utf-8")
+    assert first_hash != second_hash
+    assert f"SYSTEM_PROMPT SHA-256: `{second_hash}`" in second
+    assert first != second

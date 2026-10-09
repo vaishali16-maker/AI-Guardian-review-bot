@@ -6,6 +6,7 @@ import json
 import re
 import sys
 import time
+from datetime import date
 from pathlib import Path
 
 import requests
@@ -136,7 +137,8 @@ def _is_parse_error(output):
 def run_cases(cases, prompt="hardened", sleeper=time.sleep):
     """Run each case three times, recording individual errors and decisions."""
     case_results = []
-    for case in cases:
+    for case_index, case in enumerate(cases, start=1):
+        print(f"case {case_index}/{len(cases)}", file=sys.stderr)
         runs = []
         for run_index in range(3):
             caught_exception = None
@@ -224,14 +226,38 @@ def summarize(cases, case_results):
     }
 
 
-def write_results(prompt, cases, results, summary):
+def prompt_sha256(prompt_text=None):
+    """Return the SHA-256 digest of the active structured-review prompt."""
+    prompt_text = review_ai.SYSTEM_PROMPT if prompt_text is None else prompt_text
+    return hashlib.sha256(prompt_text.encode("utf-8")).hexdigest()
+
+
+def result_paths(directory, tag=None):
+    suffix = f"_{tag}" if tag else ""
+    return Path(directory) / f"RESULTS{suffix}.md", Path(directory) / f"results{suffix}.json"
+
+
+def _tag_name(value):
+    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_-]*", value):
+        raise argparse.ArgumentTypeError("tag must contain only letters, numbers, underscores, and hyphens")
+    return value
+
+
+def write_results(prompt, cases, results, summary, tag=None, output_dir=None):
     benchmark_dir = Path(__file__).resolve().parent
+    output_dir = Path(output_dir) if output_dir is not None else benchmark_dir
     cases_hash = hashlib.sha256((benchmark_dir / "cases.json").read_bytes()).hexdigest()
+    prompt_hash = prompt_sha256() if prompt == "hardened" else "not applicable (naive prompt)"
     payload = {"prompt": prompt, "summary": summary, "cases": results}
-    (benchmark_dir / "results.json").write_text(json.dumps(payload, indent=2), encoding="utf-8")
+    markdown_path, json_path = result_paths(output_dir, tag)
+    json_path.write_text(json.dumps(payload, indent=2), encoding="utf-8")
 
     lines = [
         "# Guardian Review AI benchmark results",
+        "",
+        f"Prompt mode: **{prompt}**",
+        f"SYSTEM_PROMPT SHA-256: `{prompt_hash}`",
+        f"Date: {date.today().isoformat()}",
         "",
         f"Cases SHA-256: `{cases_hash}`",
         "",
@@ -239,7 +265,7 @@ def write_results(prompt, cases, results, summary):
         "",
         "**Scoring differs by mode, and naive and hardened numbers are not directly comparable.** Hardened mode scores structured findings by accepted CWE or category keywords and counts safe-case findings at medium severity or higher. Naive mode scores vulnerable cases by category keywords in free text and safe cases by any named vulnerability after removing plain no-issue claims.",
         "",
-        f"Prompt mode: **{prompt}**. Runs per case: **3**. Cases: **{len(cases)}**.",
+        f"Runs per case: **3**. Cases: **{len(cases)}**.",
         "",
         "Metrics are aggregated over individual runs except consistency, which is the fraction of cases whose three binary outcomes all agree.",
         "",
@@ -259,13 +285,14 @@ def write_results(prompt, cases, results, summary):
     ]
     for category, stats in sorted(summary["per_category"].items()):
         lines.append(f"| {category} | {stats['detected']} | {stats['missed']} | {stats['recall']:.1%} |")
-    (benchmark_dir / "RESULTS.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+    markdown_path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--limit", type=int, default=None, help="Run only the first N cases")
     parser.add_argument("--prompt", choices=("hardened", "naive"), default="hardened")
+    parser.add_argument("--tag", type=_tag_name, default=None, help="Write to tagged results files without overwriting defaults")
     args = parser.parse_args(argv)
     if args.limit is not None and args.limit < 0:
         parser.error("--limit must be non-negative")
@@ -276,7 +303,7 @@ def main(argv=None):
         cases = cases[:args.limit]
     results = run_cases(cases, args.prompt)
     summary = summarize(cases, results)
-    write_results(args.prompt, cases, results, summary)
+    write_results(args.prompt, cases, results, summary, tag=args.tag)
     print(f"Benchmark complete: {len(cases)} cases; recall {summary['recall']:.1%}; false-positive rate {summary['false_positive_rate']:.1%}")
 
 
