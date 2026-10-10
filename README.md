@@ -1,195 +1,79 @@
-# Guardian Review AI 🤖🔒
+# Guardian Review AI
 
-An AI-powered GitHub bot that automatically reviews Pull Requests for **security vulnerabilities**, explaining findings in **plain, beginner-friendly language**. It's built for solo developers and small teams who don't have a dedicated security reviewer on hand.
+A GitHub App that reviews pull requests for security vulnerabilities and posts structured, severity-ranked findings as a single, continuously updated comment.
 
-**Live bot:** `https://ai-guardian-review-bot.onrender.com`
+**Live bot:** https://ai-guardian-review-bot.onrender.com (free tier; the first request after idle can take ~50 seconds)
 
----
+> Screenshot: PR comment with findings — add `docs/pr-comment.png` here.
 
 ## What it does
 
-The moment a developer opens or updates a Pull Request, Guardian Review AI:
+When a pull request is opened or updated, Guardian:
 
-1. Detects the event instantly via a GitHub webhook
-2. Verifies the webhook signature to confirm the request really came from GitHub
-3. Authenticates as a GitHub App (JWT → installation token), using the installation ID that GitHub sends in each webhook
-4. Fetches the code diff via GitHub's REST API
-5. Sends the diff (capped at a safe size) to an LLM (Groq) with a security-focused review prompt
-6. Posts the AI's findings back as a comment on the PR, automatically, with no human needing to trigger it
-
-It specifically checks for:
-
-- Hardcoded secrets (API keys, passwords, tokens)
-- SQL injection / command injection risks
-- Unsafe functions (`eval()`, `exec()`, etc.)
-- Missing input validation and other common vulnerability patterns
-
----
-
-## Why security-specific, not general code review?
-
-Most AI PR bots already handle generic style and bug checking. Very few focus specifically on **security**, and even fewer explain findings in language a beginner can actually act on instead of jargon-heavy alerts. This makes the bot useful for solo developers and small teams without a dedicated security reviewer.
-
----
-
----
+1. Verifies the webhook signature (HMAC-SHA256).
+2. Fetches the PR diff (paginated, up to 300 files; lockfiles and generated files skipped).
+3. Sends the diff to an LLM (Groq, `openai/gpt-oss-120b`) as untrusted data.
+4. Validates the model's JSON output, renders it into markdown in code, and posts it as **one bot comment that is edited in place** on every push.
 
 ## Architecture
+GitHub webhook ──► FastAPI /webhook ──► verify HMAC ──► dedupe / filter
+│
+async queue + worker
+│
+fetch PR files ◄── GitHub App auth (JWT → installation token)
+│
+build_diff (skip lockfiles, per-file caps)
+│
+LLM review (system prompt, random boundary, temperature 0)
+│
+validate JSON findings ──► render_review (escaped markdown)
+│
+create/update bot comment
 
-```
-Developer opens/updates PR
-        │
-        ▼
-GitHub Webhook  ──►  FastAPI /webhook endpoint
-        │
-        ▼
-Verify HMAC signature (X-Hub-Signature-256)  ──►  reject with 401 if invalid
-        │
-        ▼
-Async Queue  ──►  Background worker (processes one PR at a time)
-        │
-        ▼
-GitHub App Auth (JWT → Installation Token, using the installation ID from the webhook)
-        │
-        ▼
-Fetch PR diff (GitHub REST API)  ──►  truncate if over size limit
-        │
-        ▼
-AI Security Review (Groq — openai/gpt-oss-120b)
-        │
-        ▼
-Post review as PR comment (GitHub REST API)
-```
 
----
+## Security design
 
-## Tech stack
+- **Webhook authentication:** HMAC-SHA256 on the raw request body with constant-time comparison; missing or invalid signatures return 401 before any processing.
+- **Replay and noise control:** deduplication by `X-GitHub-Delivery`, bot senders and draft PRs ignored, stale queued jobs skipped when a newer push arrives.
+- **Prompt-injection mitigation:** instructions live in the system message; the diff goes in the user message inside a per-request random boundary token; the token is stripped from the diff; instruction-like phrases in the diff add a visible finding. This reduces risk and is not a guarantee.
+- **Safe rendering:** the model never writes the final comment. Findings are validated, escaped, and rendered by code; @mentions and autolinks are defanged; fix code goes in dynamically sized fenced blocks.
+- **Comment hijack protection:** the bot only updates comments that carry its marker **and** were written by a bot account.
+- **No sensitive logging:** diff contents, tokens, and response bodies are never logged.
+- **Resilience:** timeouts everywhere, retries with backoff on 429/5xx, `Retry-After` capped at 30 seconds, and a visible failure comment instead of silent errors.
 
-| Layer | Technology |
-|---|---|
-| Backend | Python, FastAPI |
-| Auth | GitHub App (PyJWT + `cryptography` for RS256 signing) |
-| Webhook security | HMAC-SHA256 signature verification |
-| AI | Groq API (`openai/gpt-oss-120b`) |
-| Concurrency | `asyncio.Queue` + background worker |
-| Testing | `pytest` + `unittest.mock` |
-| CI | GitHub Actions |
-| Deployment | Render |
+## Evaluation
 
----
+I built a small benchmark to measure the reviewer instead of guessing: **25 vulnerable and 15 safe look-alike Python snippets** across 12 vulnerability categories, 3 runs per case, temperature 0. Labels and keyword lists were frozen before any results were produced (SHA-256 recorded in each results file).
 
-## Security measures
+| Prompt | Recall (vulnerable runs) | False-positive rate (safe runs) | Run-level precision | Consistency |
+|---|---:|---:|---:|---:|
+| **v1 (production)**, run 1 | 100% (75/75) | 28.9% (13/45) | 85.2% | 92.5% |
+| **v1 (production)**, rerun | 100% (75/75) | 22.2% | 88.2% | 87.5% |
+| v2 (conservative, experiment) | 70.7% (53/75) | 8.9% (4/45) | 93.0% | 82.5% |
 
-- **Webhook signature verification:** every incoming request is checked against GitHub's `X-Hub-Signature-256` header using a shared secret (`WEBHOOK_SECRET`). The raw request body is verified *before* any JSON parsing, and the comparison uses `hmac.compare_digest` to prevent timing attacks. Requests with a missing or invalid signature are rejected with `401`, so nobody can trigger reviews (and burn API quota) by sending fake events to the public URL.
-- **No secrets in code:** all credentials (GitHub App key, Groq key, webhook secret) are read from environment variables.
-- **Diff size limit:** the diff sent to the model is capped at 30,000 characters. Lockfiles, generated files, and files without patches are skipped; per-file and overall truncation or skipped files are listed in the PR comment.
-- **Multi-account ready:** the installation ID is read from each verified webhook payload instead of a fixed environment variable, so the code is designed to serve any account that installs the app. The app is kept private for now to protect the API budget.
+**What I learned**
 
----
+- A stricter prompt cut false positives by roughly two thirds but lost about a third of true detections. It missed `shell=True` command injection in all 6 runs and several SQL injection, XSS and SSRF cases whose input arrived through a plain function parameter.
+- Identical prompt and cases produced a 28.9% and a 22.2% false-positive rate on two runs, so single-run numbers are fragile.
+- **I deploy v1.** For a security tool, a missed vulnerability costs more than an extra warning, so the bot reports speculative findings with severity and confidence for human triage. The v2 prompt is kept as `benchmark/prompts/v2_conservative.txt` with its hash tested.
+- The benchmark exposed two real bugs in my validator (valid findings dropped when optional metadata was missing); both were fixed.
 
-## Reliability & scale considerations
+**Limits:** the benchmark is small, self-written, textbook-style, and covers one model. Recall figures describe detection on these snippets, not general accuracy, and fix quality is not measured. The three runs per case are not independent samples. A free-text baseline was attempted but keyword scoring on prose was unreliable, so it is not reported.
 
-- **Concurrency:** incoming webhook events are placed on an async queue and processed one at a time by a background worker, so overlapping PR events never race against each other or the GitHub/Groq APIs simultaneously.
-- **Rate limiting:** GitHub calls retry `429`, `502`, `503`, and `504` responses; Groq retries `429` responses. Both use exponential backoff and honor `Retry-After` when present.
-- **Testing:** core logic (webhook filtering, signature verification, diff parsing, AI response parsing, retry behavior, installation ID handling) is covered by unit tests using mocked API responses, so no real network calls are needed to verify correctness.
-- **At larger scale** (thousands of repos), the next step would be replacing the in-memory queue with a persistent task queue (e.g. Celery + Redis) so work survives restarts and can be distributed across multiple workers.
+Reproduce: `python benchmark/run_benchmark.py --prompt hardened --tag my_run` (about 17 minutes; uses API quota).
 
----
+## Setup
 
-### Notes on reliability
+1. Create a GitHub App with webhook URL `https://<your-host>/webhook`, a webhook secret, and permissions for Pull requests (read) and Issues (write); subscribe to Pull request events.
+2. Set environment variables: `APP_ID`, `PRIVATE_KEY`, `WEBHOOK_SECRET`, `GROQ_API_KEY`.
+3. `pip install -r requirements.txt` then `uvicorn main:app --host 0.0.0.0 --port 10000`.
+4. Tests: `pip install -r requirements-dev.txt` then `pytest -v` (74 tests, mocked network calls).
 
-If a review request or response fails, the bot logs the exception type and posts a short failure comment on the PR.
+CI runs the test suite on every pull request; the default branch requires an approving review.
 
----
+## Limitations and future work
 
-## Repository safety net (demonstrated on this repo)
-
-This repo itself uses the same safeguards a real team would rely on:
-
-- **CI (GitHub Actions):** every PR automatically runs the test suite before it can be considered mergeable.
-- **Branch protection:** merging into `main` requires at least one approving review, so the PR author cannot self-merge.
-- **CODEOWNERS:** changes to Python files specifically require approval from a designated code owner, not just anyone with write access.
-
-The AI review is advisory. It informs, but a human still makes the final merge decision, the same way real production review tools (and real teams) operate.
-
----
-
-## Local development
-
-```bash
-git clone https://github.com/vaishali16-maker/AI-Guardian-review-bot.git
-cd AI-Guardian-review-bot
-python -m venv venv
-venv\Scripts\activate        # Windows
-pip install -r requirements.txt
-```
-
-Create a `.env` file with:
-
-```
-APP_ID=your_github_app_id
-PRIVATE_KEY=your_private_key_contents
-GROQ_API_KEY=your_groq_api_key
-WEBHOOK_SECRET=your_webhook_secret
-```
-
-Generate a webhook secret with:
-
-```bash
-python -c "import secrets; print(secrets.token_hex(32))"
-```
-
-Set the **same value** in your GitHub App's webhook secret field (GitHub App settings → Webhook → Secret) and in your deployment environment variables. If `WEBHOOK_SECRET` is not set, all webhooks are rejected.
-
-Run locally:
-
-```bash
-uvicorn main:app --reload --port 8000
-```
-
-Expose it to the internet for GitHub webhooks during local testing:
-
-```bash
-ngrok http 8000
-```
-
----
-
-## Running tests
-
-```bash
-pytest test_main.py -v
-```
-
----
-
-## Project structure
-
-```
-.
-├── main.py              # FastAPI app, webhook handler, signature check, async queue/worker
-├── github_auth.py       # GitHub App authentication (JWT + installation token)
-├── github_api.py        # Fetch PR diffs, post PR comments, retry logic
-├── review_ai.py         # Groq API call + security review prompt
-├── test_main.py         # Unit tests (mocked API calls)
-├── requirements.txt
-└── .github/
-    ├── workflows/tests.yml   # CI pipeline
-    └── CODEOWNERS
-```
-
----
-
-## Possible future improvements
-
-- Replace the in-memory queue with a persistent queue (Celery + Redis)
-- Add per-installation rate limits before making the app public
-- Add prompt-injection mitigations for untrusted diff content
-- Validate the token response from GitHub (status code and JSON key) with clearer error messages
-- Combine with a static analysis tool (e.g. Semgrep) and have the LLM explain its findings
-
----
-
-## Status
-
-Deployed and actively tested end-to-end: webhook delivery, signature verification, authentication, diff fetching, AI review generation, and comment posting have all been verified against real GitHub Pull Requests, including PRs containing intentionally planted vulnerabilities (SQL injection, hardcoded secrets, unsafe `eval()` usage) to confirm the bot correctly identifies real issues rather than defaulting to "no issues found."
+- The queue and dedupe state are in memory, so a restart loses pending jobs (next step: Redis or Celery).
+- The reviewer sees only the diff, so it can state wrong claims about code it cannot see.
+- LLM output varies between runs; confidence labels are not calibrated.
+- Single model, single language (Python), no static-analysis hybrid yet (Bandit/Semgrep would be the next addition).
