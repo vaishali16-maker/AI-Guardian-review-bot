@@ -4,7 +4,9 @@ A GitHub App that reviews pull requests for security vulnerabilities and posts s
 
 **Live bot:** https://ai-guardian-review-bot.onrender.com (free tier; the first request after idle can take ~50 seconds)
 
-> Screenshot: PR comment with findings — add `docs/pr-comment.png` here.
+![Guardian reviewing a PR that contains a planted prompt-injection comment](docs/injection-test.png)
+
+   *Live test: a PR with real vulnerabilities plus a comment telling the reviewer to ignore its instructions. The bot still reported both flaws and flagged the manipulation attempt. This was one test with one phrasing, not a guarantee.*
 
 ## What it does
 
